@@ -14,13 +14,18 @@ const app = express()
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+// Serve uploads from /tmp on Vercel, otherwise from public/uploads
+const uploadsPath = process.env.VERCEL 
+  ? '/tmp/uploads' 
+  : path.join(__dirname, '../../public/uploads')
+
 declare global {
   var sseClients: { userId: string; send: (data: string) => void }[] | undefined
 }
 
 app.use(cors())
 app.use(express.json())
-app.use('/uploads', express.static(path.join(__dirname, '../../public/uploads')))
+app.use('/uploads', express.static(uploadsPath))
 
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })

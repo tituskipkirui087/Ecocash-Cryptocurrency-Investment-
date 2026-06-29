@@ -313,7 +313,7 @@ export const notifyDepositSubmitted = async (depositId: string, userName: string
   ]
   
   const __dirname = path.dirname(fileURLToPath(import.meta.url))
-  const uploadsPath = path.join(__dirname, '../../public/uploads')
+  const uploadsPath = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../../public/uploads')
   
   if (receiptPath && bot) {
     const fullPath = path.join(uploadsPath, receiptPath.replace('/uploads/', ''))
@@ -365,7 +365,7 @@ export const notifyKYCSubmission = async (userId: string, userName: string, self
   if (bot && ADMIN_CHAT_ID) {
     try {
       const __dirname = path.dirname(fileURLToPath(import.meta.url))
-      const uploadsPath = path.join(__dirname, '../../public/uploads')
+      const uploadsPath = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../../public/uploads')
       
       // Send selfie photo
       if (selfieUrl) {

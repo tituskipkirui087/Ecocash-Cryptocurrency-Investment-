@@ -4,13 +4,23 @@ import { authenticateToken } from '../middleware/auth'
 import multer from 'multer'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import fs from 'fs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Create uploads directory if it doesn't exist (for local development)
+const kycUploadDir = process.env.VERCEL ? '/tmp/uploads/kyc' : path.join(__dirname, '../../public/uploads/kyc')
+const avatarUploadDir = process.env.VERCEL ? '/tmp/uploads/avatars' : path.join(__dirname, '../../public/uploads/avatars')
+
+if (!process.env.VERCEL) {
+  fs.mkdirSync(kycUploadDir, { recursive: true })
+  fs.mkdirSync(avatarUploadDir, { recursive: true })
+}
 
 const router = Router()
 
 const avatarStorage = multer.diskStorage({
-  destination: path.join(__dirname, '../../public/uploads/avatars/'),
+  destination: avatarUploadDir,
   filename: (_, file, cb) => {
     const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`
     cb(null, uniqueName)
@@ -18,7 +28,7 @@ const avatarStorage = multer.diskStorage({
 })
 
 const kycStorage = multer.diskStorage({
-  destination: path.join(__dirname, '../../public/uploads/kyc/'),
+  destination: kycUploadDir,
   filename: (_, file, cb) => {
     const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`
     cb(null, uniqueName)

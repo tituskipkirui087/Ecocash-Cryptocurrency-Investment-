@@ -113,7 +113,8 @@ export default function KYCPage() {
       toast.success('KYC submitted for verification! Admin will review shortly.')
       router.push('/dashboard')
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to submit KYC')
+      console.error('KYC submit error:', err.response?.data || err.message)
+      toast.error(err.response?.data?.message || err.message || 'Failed to submit KYC')
     } finally {
       setLoading(false)
     }
