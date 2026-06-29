@@ -26,11 +26,12 @@ model User {
    fullNameLegal      String?
    dateOfBirth        DateTime?
    residentialAddress String?
-   nationality        String?
-   occupation         String?
-   sourceOfFunds      String?
+   country            String?   @default("Zimbabwe")
    idDocumentType     String? // PASSPORT, NATIONAL_ID, DRIVERS_LICENSE, RESIDENCE_PERMIT
+   idDocumentNumber   String?
    idDocumentUrl      String?
+   idDocumentFrontUrl String?
+   idDocumentBackUrl  String?
    selfieUrl          String?
    kycStatus          String    @default("PENDING") // PENDING, SUBMITTED, APPROVED, REJECTED
    
@@ -42,7 +43,7 @@ model User {
    withdrawals        Withdrawal[]
    telegramChatId     String?
 
-  @@map("users")
+   @@map("users")
 }
 
 model Investment {

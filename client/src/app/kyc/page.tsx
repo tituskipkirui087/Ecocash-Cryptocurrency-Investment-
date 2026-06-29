@@ -4,9 +4,15 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
-import { User, Calendar, MapPin, CreditCard, Camera, Send, Flag, Shield, CheckCircle } from 'lucide-react'
+import { User, Calendar, MapPin, CreditCard, Camera, Send, Flag, Shield, CheckCircle, Building2, Hash, FileText } from 'lucide-react'
 
 type DocumentType = 'PASSPORT' | 'NATIONAL_ID' | 'DRIVERS_LICENSE' | 'RESIDENCE_PERMIT'
+
+const ZIMBABWE_LOCATIONS = [
+  'Harare', 'Bulawayo', 'Chitungwiza', 'Mutare', 'Gweru', 'Kwekwe', 'Kadoma', 'Masvingo', 'Chinhoyi', 'Karoi',
+  'Norton', 'Chegutu', 'Rusape', 'Nyanga', 'Marondera', 'Murehwa', 'Uzumba', 'Mudzi', 'Hwange', 'Victoria Falls',
+  'Beitbridge', 'Plumtree', 'Gwanda', 'Esigodini', 'Kezi', 'Maphisa', 'Filabusi', 'Lupane', 'Nkayi', 'Tsholotsho'
+]
 
 export default function KYCPage() {
   const router = useRouter()
@@ -17,16 +23,23 @@ export default function KYCPage() {
     residentialAddress: '',
     country: 'Zimbabwe',
     idDocumentType: '' as DocumentType,
+    idDocumentNumber: '',
+    idDocumentFront: null as File | null,
+    idDocumentBack: null as File | null,
   })
   const [idDocument, setIdDocument] = useState<File | null>(null)
   const [selfiePreview, setSelfiePreview] = useState<string | null>(null)
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [showCamera, setShowCamera] = useState(false)
+  const streamRef = useRef<MediaStream | null>(null)
 
   useEffect(() => {
-    if (showCamera && videoRef.current) {
+    if (showCamera && videoRef.current && !streamRef.current) {
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
+          streamRef.current = stream
           if (videoRef.current) videoRef.current.srcObject = stream
         })
         .catch(err => {
@@ -34,7 +47,26 @@ export default function KYCPage() {
           toast.error('Could not access camera')
         })
     }
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop())
+        streamRef.current = null
+      }
+    }
   }, [showCamera])
+
+  const handleAddressChange = (value: string) => {
+    setFormData({ ...formData, residentialAddress: value })
+    if (value.length > 1) {
+      const suggestions = ZIMBABWE_LOCATIONS.filter(loc => 
+        loc.toLowerCase().includes(value.toLowerCase())
+      ).slice(0, 5)
+      setAddressSuggestions(suggestions)
+      setShowSuggestions(suggestions.length > 0)
+    } else {
+      setShowSuggestions(false)
+    }
+  }
 
   const captureSelfie = () => {
     if (videoRef.current) {
@@ -47,11 +79,14 @@ export default function KYCPage() {
         if (blob) {
           const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' })
           setSelfiePreview(URL.createObjectURL(file))
-          const stream = videoRef.current?.srcObject as MediaStream
-          stream?.getTracks().forEach(t => t.stop())
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(t => t.stop())
+            streamRef.current = null
+          }
           setShowCamera(false)
+          toast.success('Selfie captured!')
         }
-      })
+      }, 'image/jpeg', 0.9)
     }
   }
 
@@ -65,7 +100,13 @@ export default function KYCPage() {
     try {
       const form = new FormData()
       Object.entries(formData).forEach(([key, value]) => {
-        if (value) form.append(key, value as string)
+        if (value) {
+          if (value instanceof File) {
+            form.append(key, value)
+          } else {
+            form.append(key, value as string)
+          }
+        }
       })
       form.append('idDocument', idDocument)
       const selfieRes = await fetch(selfiePreview)
@@ -75,7 +116,7 @@ export default function KYCPage() {
       await api.post('auth/kyc', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      toast.success('KYC submitted successfully! Redirecting to dashboard...')
+      toast.success('KYC submitted for verification! Admin will review shortly.')
       router.push('/dashboard')
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to submit KYC')
@@ -86,98 +127,91 @@ export default function KYCPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-brand-blue/5 to-brand-blue/10 p-4">
-      <div className="w-full max-w-2xl">
-        <div className="rounded-3xl bg-white p-8 shadow-xl border border-gray-100">
-          <div className="mb-6 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-blue to-brand-sky">
-              <Shield className="h-6 w-6 text-white" />
+      <div className="w-full max-w-xl">
+        <div className="rounded-3xl bg-white p-6 shadow-xl border border-gray-100">
+          <div className="mb-5 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-blue to-brand-sky">
+              <Shield className="h-5 w-5 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Complete Your KYC</h1>
-            <p className="mt-2 text-gray-600">Verify your identity to access your account</p>
-            <p className="mt-1 text-xs text-gray-500">Your information is securely encrypted and protected</p>
+            <h1 className="text-xl font-bold text-gray-900">Complete Your KYC</h1>
+            <p className="mt-1 text-xs text-gray-600">Verify your identity to access your account</p>
           </div>
 
-          {showCamera && (
-            <div className="mb-6 rounded-2xl overflow-hidden border-2 border-brand-blue/20 bg-black shadow-lg">
-              <div className="relative">
-                <video ref={videoRef} autoPlay playsInline className="w-full" />
-                <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent p-3">
-                  <p className="text-xs text-white font-medium">Ensure your face is well-lit and centered</p>
-                  <p className="text-xs text-white/80">Remove sunglasses and look directly at the camera</p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Personal Info Row */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700">Full Legal Name</label>
+                <div className="relative mt-1">
+                  <User className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={formData.fullNameLegal}
+                    onChange={(e) => setFormData({ ...formData, fullNameLegal: e.target.value })}
+                    className="w-full rounded-lg border border-gray-200 pl-8 pr-2 py-2 text-xs focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue/10"
+                    required
+                    placeholder="As on your ID"
+                  />
                 </div>
               </div>
-              <div className="p-4 bg-gray-900 flex justify-between items-center">
-                <button type="button" onClick={() => setShowCamera(false)} className="px-4 py-2 text-sm border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-800">Cancel</button>
-                <button type="button" onClick={captureSelfie} className="px-6 py-2 text-sm bg-brand-blue text-white rounded-lg font-medium flex items-center gap-2 hover:bg-brand-blue/90"><Camera className="h-4 w-4" /> Capture Selfie</button>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700">Date of Birth</label>
+                <div className="relative mt-1">
+                  <Calendar className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
+                  <input
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                    className="w-full rounded-lg border border-gray-200 pl-8 pr-2 py-2 text-xs focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue/10"
+                    required
+                  />
+                </div>
               </div>
             </div>
-          )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Full Legal Name</label>
+            {/* Address with Suggestions */}
+            <div className="relative">
+              <label className="block text-xs font-medium text-gray-700">Residential Address</label>
               <div className="relative mt-1">
-                <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <MapPin className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
                 <input
                   type="text"
-                  value={formData.fullNameLegal}
-                  onChange={(e) => setFormData({ ...formData, fullNameLegal: e.target.value })}
-                  className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
-                  required
-                  placeholder="As it appears on your ID"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
-              <div className="relative mt-1">
-                <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <input
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                  className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Residential Address</label>
-              <div className="relative mt-1">
-                <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <textarea
                   value={formData.residentialAddress}
-                  onChange={(e) => setFormData({ ...formData, residentialAddress: e.target.value })}
-                  className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
-                  rows={2}
+                  onChange={(e) => handleAddressChange(e.target.value)}
+                  onFocus={() => formData.residentialAddress.length > 1 && setAddressSuggestions(ZIMBABWE_LOCATIONS.slice(0, 5))}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                  className="w-full rounded-lg border border-gray-200 pl-8 pr-2 py-2 text-xs focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue/10"
+                  placeholder="Start typing location in Zimbabwe"
                   required
-                  placeholder="Your full residential address"
                 />
               </div>
+              {showSuggestions && addressSuggestions.length > 0 && (
+                <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-32 overflow-y-auto">
+                  {addressSuggestions.map((suggestion, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, residentialAddress: suggestion })
+                        setShowSuggestions(false)
+                      }}
+                      className="w-full px-3 py-1.5 text-left text-xs hover:bg-gray-50 border-b last:border-b-0"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
+            {/* ID Document Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
-              <div className="relative">
-                <Flag className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  value={formData.country}
-                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 bg-gray-50 cursor-not-allowed"
-                  disabled
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ID Document Type</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">ID Document Type</label>
               <select
                 value={formData.idDocumentType}
                 onChange={(e) => setFormData({ ...formData, idDocumentType: e.target.value as DocumentType })}
-                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
+                className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue/10"
                 required
               >
                 <option value="">Select document type</option>
@@ -188,37 +222,74 @@ export default function KYCPage() {
               </select>
             </div>
 
+            {/* ID Number */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Upload ID Document</label>
-              <label className="flex items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 px-4 py-3 cursor-pointer hover:border-brand-blue/30 bg-gray-50/50">
-                <CreditCard className="h-5 w-5 text-brand-blue" />
-                <span className="text-sm text-gray-600 truncate flex-1">{idDocument ? idDocument.name : 'Click to choose file'}</span>
+              <label className="block text-xs font-medium text-gray-700">ID Document Number</label>
+              <div className="relative mt-1">
+                <Hash className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
                 <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setIdDocument(e.target.files?.[0] || null)}
-                  className="hidden"
+                  type="text"
+                  value={formData.idDocumentNumber}
+                  onChange={(e) => setFormData({ ...formData, idDocumentNumber: e.target.value })}
+                  className="w-full rounded-lg border border-gray-200 pl-8 pr-2 py-2 text-xs focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue/10"
+                  placeholder="ID number"
                   required
                 />
-              </label>
+              </div>
             </div>
 
+            {/* ID Document Front/Back Upload */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Capture Selfie</label>
-              <div className="flex items-center gap-4">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Upload ID (Front & Back)</label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex flex-col items-center gap-1 rounded-lg border-2 border-dashed border-gray-200 p-3 cursor-pointer hover:border-brand-blue/30">
+                  <FileText className="h-4 w-4 text-brand-blue" />
+                  <span className="text-2xs text-gray-600 text-center">Front Side</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        setFormData({ ...formData, idDocumentFront: file })
+                        setIdDocument(file)
+                      }
+                    }}
+                    className="hidden"
+                    required
+                  />
+                </label>
+                <label className="flex flex-col items-center gap-1 rounded-lg border-2 border-dashed border-gray-200 p-3 cursor-pointer hover:border-brand-blue/30">
+                  <FileText className="h-4 w-4 text-brand-blue" />
+                  <span className="text-2xs text-gray-600 text-center">Back Side</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setFormData({ ...formData, idDocumentBack: e.target.files?.[0] || null })}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Selfie Capture - Small Popup Window */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Capture Selfie</label>
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setShowCamera(true)}
-                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-blue to-brand-sky px-4 py-2.5 text-sm font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90"
+                  className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-brand-blue to-brand-sky px-3 py-1.5 text-xs font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90"
                 >
-                  <Camera className="h-4 w-4" />
+                  <Camera className="h-3.5 w-3.5" />
                   Open Camera
                 </button>
+                
                 {selfiePreview && (
                   <div className="relative">
-                    <img src={selfiePreview} alt="Selfie preview" className="h-14 w-14 rounded-full object-cover border-2 border-brand-blue/20" />
-                    <div className="absolute -top-1 -right-1 bg-green-500 rounded-full p-0.5">
-                      <CheckCircle className="h-3 w-3 text-white" />
+                    <img src={selfiePreview} alt="Selfie" className="h-10 w-10 rounded-full object-cover border-2 border-brand-blue/20" />
+                    <div className="absolute -top-0.5 -right-0.5 bg-green-500 rounded-full p-0.5">
+                      <CheckCircle className="h-2.5 w-2.5 text-white" />
                     </div>
                   </div>
                 )}
@@ -228,14 +299,31 @@ export default function KYCPage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-blue to-brand-sky px-4 py-2.5 text-sm font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90 disabled:opacity-50 transition-all duration-200"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-brand-blue to-brand-sky px-3 py-2 text-xs font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90 disabled:opacity-50 transition-all"
             >
-              <Send size={18} />
+              <Send size={16} />
               {loading ? 'Submitting...' : 'Submit for Verification'}
             </button>
           </form>
         </div>
       </div>
+      
+      {/* Small Camera Popup */}
+      {showCamera && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="relative w-80 max-w-full rounded-xl overflow-hidden border-2 border-brand-blue/20 bg-black shadow-2xl">
+            <video ref={videoRef} autoPlay playsInline className="w-full" style={{ maxHeight: '280px' }} />
+            <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent p-2">
+              <p className="text-2xs text-white font-medium">Ensure your face is well-lit and centered</p>
+              <p className="text-2xs text-white/80">Look directly at the camera</p>
+            </div>
+            <div className="p-3 bg-gray-900 flex justify-between items-center">
+              <button type="button" onClick={() => { setShowCamera(false); if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null } }} className="px-3 py-1 text-xs border border-gray-600 rounded text-gray-300 hover:bg-gray-800">Cancel</button>
+              <button type="button" onClick={captureSelfie} className="px-4 py-1 text-xs bg-brand-blue text-white rounded font-medium flex items-center gap-1"><Camera className="h-3.5 w-3.5" /> Capture</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

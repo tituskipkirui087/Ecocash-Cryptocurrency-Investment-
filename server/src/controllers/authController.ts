@@ -273,10 +273,12 @@ export const submitKYC = async (req: AuthRequest, res: Response): Promise<void> 
       return
     }
 
-    const { fullNameLegal, dateOfBirth, residentialAddress, nationality, occupation, sourceOfFunds, idDocumentType } = req.body
+    const { fullNameLegal, dateOfBirth, residentialAddress, idDocumentType, idDocumentNumber, country } = req.body
 
     const idDocumentUrl = `/uploads/kyc/${idDocument.filename}`
     const selfieUrl = `/uploads/kyc/${selfie.filename}`
+    const idFrontUrl = files?.idDocumentFront?.[0] ? `/uploads/kyc/${files.idDocumentFront[0].filename}` : null
+    const idBackUrl = files?.idDocumentBack?.[0] ? `/uploads/kyc/${files.idDocumentBack[0].filename}` : null
 
     await prisma.user.update({
       where: { id: req.user!.id },
@@ -284,12 +286,13 @@ export const submitKYC = async (req: AuthRequest, res: Response): Promise<void> 
         fullNameLegal,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
         residentialAddress,
-        nationality,
-        occupation,
-        sourceOfFunds,
         idDocumentType,
+        idDocumentNumber,
+        country: country || 'Zimbabwe',
         idDocumentUrl,
         selfieUrl,
+        idDocumentFrontUrl: idFrontUrl,
+        idDocumentBackUrl: idBackUrl,
         kycStatus: 'SUBMITTED',
       },
     })
