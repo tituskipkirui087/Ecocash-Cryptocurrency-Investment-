@@ -268,8 +268,18 @@ export const submitKYC = async (req: AuthRequest, res: Response): Promise<void> 
     const idDocumentFront = files?.idDocumentFront?.[0]
     const selfie = files?.selfie?.[0]
 
+    console.log('KYC submit - files received:', { 
+      idDocumentFront: idDocumentFront?.originalname || 'none', 
+      selfie: selfie?.originalname || 'none',
+      body: Object.keys(req.body) 
+    })
+
     if (!idDocumentFront || !selfie) {
-      res.status(400).json({ success: false, message: 'ID front and selfie are required' })
+      res.status(400).json({ 
+        success: false, 
+        message: 'ID front and selfie are required',
+        received: { hasIdFront: !!idDocumentFront, hasSelfie: !!selfie, files: Object.keys(files || {}) }
+      })
       return
     }
 
