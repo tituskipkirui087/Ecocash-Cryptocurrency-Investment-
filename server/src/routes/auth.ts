@@ -3,11 +3,14 @@ import { register, login, approveUser, rejectUser, getPendingUsers, getProfile, 
 import { authenticateToken } from '../middleware/auth'
 import multer from 'multer'
 import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const router = Router()
 
 const avatarStorage = multer.diskStorage({
-  destination: 'public/uploads/avatars/',
+  destination: path.join(__dirname, '../../public/uploads/avatars/'),
   filename: (_, file, cb) => {
     const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`
     cb(null, uniqueName)
@@ -15,7 +18,7 @@ const avatarStorage = multer.diskStorage({
 })
 
 const kycStorage = multer.diskStorage({
-  destination: 'public/uploads/kyc/',
+  destination: path.join(__dirname, '../../public/uploads/kyc/'),
   filename: (_, file, cb) => {
     const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`
     cb(null, uniqueName)

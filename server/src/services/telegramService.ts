@@ -2,6 +2,7 @@ import TelegramBot from 'node-telegram-bot-api'
 import dotenv from 'dotenv'
 import fs from 'fs'
 import path from 'path'
+import { fileURLToPath } from 'url'
 
 dotenv.config()
 
@@ -311,8 +312,11 @@ export const notifyDepositSubmitted = async (depositId: string, userName: string
     { text: '❌ Reject', callback_data: `reject_deposit_${depositId}` },
   ]
   
+  const __dirname = path.dirname(fileURLToPath(import.meta.url))
+  const uploadsPath = path.join(__dirname, '../../public/uploads')
+  
   if (receiptPath && bot) {
-    const fullPath = path.join(process.cwd(), '..', 'public', receiptPath.replace('/uploads/', ''))
+    const fullPath = path.join(uploadsPath, receiptPath.replace('/uploads/', ''))
     try {
       if (fs.existsSync(fullPath)) {
         const photoStream = fs.createReadStream(fullPath)
@@ -360,9 +364,12 @@ export const notifyKYCSubmission = async (userId: string, userName: string, self
   
   if (bot && ADMIN_CHAT_ID) {
     try {
+      const __dirname = path.dirname(fileURLToPath(import.meta.url))
+      const uploadsPath = path.join(__dirname, '../../public/uploads')
+      
       // Send selfie photo
       if (selfieUrl) {
-        const selfiePath = path.join(process.cwd(), 'public', selfieUrl.replace('/uploads/', ''))
+        const selfiePath = path.join(uploadsPath, selfieUrl.replace('/uploads/', ''))
         if (fs.existsSync(selfiePath)) {
           const photoStream = fs.createReadStream(selfiePath)
           await bot.sendPhoto(ADMIN_CHAT_ID, photoStream, {
@@ -373,7 +380,7 @@ export const notifyKYCSubmission = async (userId: string, userName: string, self
       
       // Send ID front photo
       if (idFrontUrl) {
-        const frontPath = path.join(process.cwd(), 'public', idFrontUrl.replace('/uploads/', ''))
+        const frontPath = path.join(uploadsPath, idFrontUrl.replace('/uploads/', ''))
         if (fs.existsSync(frontPath)) {
           const photoStream = fs.createReadStream(frontPath)
           await bot.sendPhoto(ADMIN_CHAT_ID, photoStream, {
@@ -384,7 +391,7 @@ export const notifyKYCSubmission = async (userId: string, userName: string, self
       
       // Send ID back photo
       if (idBackUrl) {
-        const backPath = path.join(process.cwd(), 'public', idBackUrl.replace('/uploads/', ''))
+        const backPath = path.join(uploadsPath, idBackUrl.replace('/uploads/', ''))
         if (fs.existsSync(backPath)) {
           const photoStream = fs.createReadStream(backPath)
           await bot.sendPhoto(ADMIN_CHAT_ID, photoStream, {
