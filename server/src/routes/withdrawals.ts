@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import { getWithdrawals, createWithdrawal, approveWithdrawal, rejectWithdrawal } from '../controllers/withdrawalController'
-import { authenticateToken } from '../middleware/auth'
+import { getWithdrawals, createWithdrawal, approveWithdrawal, rejectWithdrawal } from '../controllers/withdrawalController.js'
+import { authenticateToken } from '../middleware/auth.js'
 
 const router = Router()
 

@@ -1,9 +1,9 @@
 import { Response } from 'express'
-import { AuthRequest, authenticateToken } from '../middleware/auth'
-import { prisma } from '../config/db'
+import { AuthRequest, authenticateToken } from '../middleware/auth.js'
+import { prisma } from '../config/db.js'
+import { notifyNewUser, notifyKYCSubmission } from '../services/telegramService.js'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { notifyNewUser, notifyKYCSubmission } from '../services/telegramService'
 import { z } from 'zod'
 
 const registerSchema = z.object({

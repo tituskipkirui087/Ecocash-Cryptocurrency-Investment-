@@ -1,7 +1,7 @@
 import { Response, Request } from 'express'
-import { AuthRequest, authenticateToken } from '../middleware/auth'
-import { sendTelegramMessage } from '../services/telegramService'
-import { prisma } from '../config/db'
+import { AuthRequest, authenticateToken } from '../middleware/auth.js'
+import { sendTelegramMessage } from '../services/telegramService.js'
+import { prisma } from '../config/db.js'
 
 export const requestProfit = async (req: AuthRequest, res: Response): Promise<void> => {
   try {

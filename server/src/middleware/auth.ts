@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { z } from 'zod'
-import { prisma } from '../config/db'
+import { prisma } from '../config/db.js'
 
 interface AuthRequest extends Request {
   user?: {

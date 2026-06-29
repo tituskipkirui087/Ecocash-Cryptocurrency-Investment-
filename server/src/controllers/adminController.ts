@@ -1,9 +1,8 @@
 import { Response } from 'express'
-import { AuthRequest, authenticateToken, requireAdmin } from '../middleware/auth'
-import { prisma } from '../config/db'
-import bcrypt from 'bcrypt'
-import { z } from 'zod'
-import { notifyAuditLog } from '../services/telegramService'
+import { AuthRequest, authenticateToken, requireAdmin } from '../middleware/auth.js'
+import { prisma } from '../config/db.js'
+import { notifyAuditLog } from '../services/telegramService.js'
+import bcrypt from 'bcryptjs'
 
 export const getDashboardStats = async (req: AuthRequest, res: Response): Promise<void> => {
   try {

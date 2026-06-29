@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { getDashboardStats, getAllUsers, getAllInvestments, getAllDeposits, getAllWithdrawals, getAuditLogs, updateUserStatus, createAdmin } from '../controllers/adminController'
-import { authenticateToken, requireAdmin } from '../middleware/auth'
-import { approveWithdrawal, rejectWithdrawal } from '../controllers/withdrawalController'
+import { getDashboardStats, getAllUsers, getAllInvestments, getAllDeposits, getAllWithdrawals, getAuditLogs, updateUserStatus, createAdmin } from '../controllers/adminController.js'
+import { authenticateToken, requireAdmin } from '../middleware/auth.js'
+import { approveWithdrawal, rejectWithdrawal } from '../controllers/withdrawalController.js'
 
 const router = Router()
 

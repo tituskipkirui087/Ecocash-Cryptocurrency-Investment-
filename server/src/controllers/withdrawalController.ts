@@ -1,8 +1,8 @@
 import { Response } from 'express'
-import { AuthRequest, authenticateToken } from '../middleware/auth'
-import { prisma } from '../config/db'
-import { notifyWithdrawalRequest } from '../services/telegramService'
-import { generateWithdrawalId } from '../utils/helpers'
+import { AuthRequest, authenticateToken } from '../middleware/auth.js'
+import { prisma } from '../config/db.js'
+import { notifyWithdrawalRequest } from '../services/telegramService.js'
+import { generateWithdrawalId } from '../utils/helpers.js'
 import { z } from 'zod'
 
 const WITHDRAWAL_FEE_PERCENT = 0.02

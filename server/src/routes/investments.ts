@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import { getInvestments, getInvestment, createInvestment, updateInvestmentProfit, startTrade, closeTrade, getPlans, rejectInvestment } from '../controllers/investmentController'
-import { authenticateToken } from '../middleware/auth'
+import { getInvestments, getInvestment, createInvestment, updateInvestmentProfit, startTrade, closeTrade, getPlans, rejectInvestment } from '../controllers/investmentController.js'
+import { authenticateToken } from '../middleware/auth.js'
 
 const router = Router()
 

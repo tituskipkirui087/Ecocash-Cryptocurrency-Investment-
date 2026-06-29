@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import { requestProfit, updateLatestProfit } from '../controllers/notificationController'
-import { authenticateToken } from '../middleware/auth'
+import { requestProfit, updateLatestProfit } from '../controllers/notificationController.js'
+import { authenticateToken } from '../middleware/auth.js'
 
 const router = Router()
 

@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import multer from 'multer'
 import path from 'path'
-import { getDeposits, submitDeposit, uploadReceipt, approveDeposit, rejectDeposit, updateDepositStatus } from '../controllers/depositController'
-import { authenticateToken } from '../middleware/auth'
+import { getDeposits, submitDeposit, uploadReceipt, approveDeposit, rejectDeposit, updateDepositStatus } from '../controllers/depositController.js'
+import { authenticateToken } from '../middleware/auth.js'
 
 const router = Router()
 

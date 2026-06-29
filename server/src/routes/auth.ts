@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express'
-import { register, login, approveUser, rejectUser, getPendingUsers, getProfile, updateProfile, uploadAvatar, submitKYC } from '../controllers/authController'
-import { authenticateToken } from '../middleware/auth'
+import { register, login, approveUser, rejectUser, getPendingUsers, getProfile, updateProfile, uploadAvatar, submitKYC } from '../controllers/authController.js'
+import { authenticateToken } from '../middleware/auth.js'
 import multer from 'multer'
 import path from 'path'
 import { fileURLToPath } from 'url'

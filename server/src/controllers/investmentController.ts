@@ -1,8 +1,8 @@
 import { Response } from 'express'
-import { AuthRequest, authenticateToken } from '../middleware/auth'
-import { prisma } from '../config/db'
-import { generateInvestmentId, formatCurrency } from '../utils/helpers'
-import { sendTelegramWithButtons, notifyNewInvestment, notifyTradeClosed } from '../services/telegramService'
+import { AuthRequest, authenticateToken } from '../middleware/auth.js'
+import { prisma } from '../config/db.js'
+import { generateInvestmentId, formatCurrency } from '../utils/helpers.js'
+import { sendTelegramWithButtons, notifyNewInvestment, notifyTradeClosed } from '../services/telegramService.js'
 import { z } from 'zod'
 
 const createInvestmentSchema = z.object({
