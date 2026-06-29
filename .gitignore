@@ -22,8 +22,12 @@ client/tsconfig.tsbuildinfo
 *.sqlite
 
 # Uploads
-*/public/uploads/*
-!*/public/uploads/.gitkeep
+public/uploads/*
+!public/uploads/.gitkeep
+client/public/uploads/*
+!client/public/uploads/.gitkeep
+server/public/uploads/*
+!server/public/uploads/.gitkeep
 
 # IDE
 .idea
