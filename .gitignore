@@ -26,6 +26,7 @@ public/uploads/*
 !public/uploads/.gitkeep
 client/public/uploads/*
 !client/public/uploads/.gitkeep
+!client/public/uploads/Ecocash-Cards.mp4
 server/public/uploads/*
 !server/public/uploads/.gitkeep
 

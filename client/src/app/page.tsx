@@ -144,7 +144,7 @@ export default function Home() {
       <main>
         <section className="relative overflow-hidden bg-gradient-to-br from-gray-900 to-dark-400 py-16">
           <div className="absolute inset-0 z-0">
-            <video
+<video
               ref={videoRef}
               autoPlay
               muted
