@@ -109,9 +109,7 @@ export default function KYCPage() {
       const selfieBlob = await selfieRes.blob()
       form.append('selfie', new File([selfieBlob], 'selfie.jpg', { type: 'image/jpeg' }))
 
-      await api.post('auth/kyc', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      await api.post('auth/kyc', form)
       toast.success('KYC submitted for verification! Admin will review shortly.')
       router.push('/dashboard')
     } catch (err: any) {
