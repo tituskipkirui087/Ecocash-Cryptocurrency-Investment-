@@ -6,7 +6,7 @@ import { z } from 'zod';
 const prisma = new PrismaClient();
 
 export default async function handler(req, res) {
-  const { method, url, query } = req;
+  const { method, url } = req;
   const path = url.split('?')[0];
 
   res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || '*');
@@ -16,12 +16,17 @@ export default async function handler(req, res) {
 
   if (method === 'OPTIONS') return res.status(200).end();
 
+  if (path === '/api/health') {
+    return res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  }
+
+  let body = {};
+  if (req.body) {
+    body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  }
+
   try {
     await prisma.$connect();
-    
-    if (path === '/api/health') {
-      return res.json({ status: 'ok', timestamp: new Date().toISOString() });
-    }
 
     if (path === '/api/investments/plans') {
       const plans = await prisma.investmentPlan.findMany();
@@ -31,11 +36,6 @@ export default async function handler(req, res) {
     if (path === '/api/deposits' && method === 'GET') {
       const deposits = await prisma.deposit.findMany({ orderBy: { createdAt: 'desc' } });
       return res.json({ success: true, data: deposits });
-    }
-
-    let body = {};
-    if (req.body) {
-      body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     }
 
     if (path === '/api/auth/register' && method === 'POST') {
@@ -70,7 +70,6 @@ export default async function handler(req, res) {
     }
 
     return res.status(404).json({ success: false, message: 'Route not found' });
-
   } catch (err) {
     const e = err;
     if (e instanceof z.ZodError) return res.status(400).json({ success: false, message: 'Validation error', errors: e.errors });
