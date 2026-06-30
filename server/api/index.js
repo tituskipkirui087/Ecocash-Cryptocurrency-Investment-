@@ -3,14 +3,12 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 
-// Build pooler URL from POSTGRES_* environment variables
+// Build connection URL - prefer DATABASE_URL, fallback to POSTGRES_*
 const buildConnectionUrl = () => {
+  // Direct connection string (preferred)
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
   
-  // Use POSTGRES variables provided by Vercel Supabase integration
-  // POSTGRES_HOST: db.xgotkgxnsupvdzsorlij.supabase.co
-  // POSTGRES_PASSWORD: password
-  // POSTGRES_DATABASE: postgres
+  // Fallback to POSTGRES_* variables from Vercel integration
   const host = process.env.POSTGRES_HOST?.replace(':5432', '') || '';
   const password = process.env.POSTGRES_PASSWORD || '';
   const database = process.env.POSTGRES_DATABASE || 'postgres';
