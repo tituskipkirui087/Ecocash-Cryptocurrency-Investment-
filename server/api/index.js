@@ -3,8 +3,21 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 
-// Use Prisma for database access
-const prisma = new PrismaClient();
+// Use DATABASE_URL or construct from POSTGRES_* variables
+let databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
+
+// If still no URL, try to construct from POSTGRES_HOST and POSTGRES_PASSWORD
+if (!databaseUrl && process.env.POSTGRES_HOST && process.env.POSTGRES_PASSWORD) {
+  // Remove port if present: db.xgotkgxnsupvdzsorlij.supabase.co:5432
+  const host = process.env.POSTGRES_HOST.replace(':5432', '').replace(':6543', '');
+  databaseUrl = `postgresql://postgres.${process.env.POSTGRES_PASSWORD}@${host}/postgres`;
+}
+
+console.log('Database connection host:', databaseUrl ? databaseUrl.match(/@([^/]+)/)?.[1] : 'NOT SET');
+
+const prisma = databaseUrl ? new PrismaClient({
+  datasources: { db: { url: databaseUrl } }
+}) : null;
 
 export default async function handler(req, res) {
   const { method, url } = req;
@@ -28,6 +41,9 @@ export default async function handler(req, res) {
 
   try {
     if (path === '/api/investments/plans') {
+      if (!prisma) {
+        return res.status(500).json({ success: false, message: 'Database not configured. Set DATABASE_URL or POSTGRES_URL environment variable.' });
+      }
       const plans = await prisma.investmentPlan.findMany();
       return res.json({ success: true, data: plans });
     }
