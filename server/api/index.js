@@ -30,11 +30,13 @@ export default async function handler(req, res) {
 
     if (path === '/api/investments/plans') {
       const plans = await prisma.investmentPlan.findMany();
+      await prisma.$disconnect();
       return res.json({ success: true, data: plans });
     }
 
     if (path === '/api/deposits' && method === 'GET') {
       const deposits = await prisma.deposit.findMany({ orderBy: { createdAt: 'desc' } });
+      await prisma.$disconnect();
       return res.json({ success: true, data: deposits });
     }
 
@@ -48,6 +50,7 @@ export default async function handler(req, res) {
         select: { id: true, email: true, firstName: true, lastName: true, isVerified: true, role: true, createdAt: true }
       });
       const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+      await prisma.$disconnect();
       return res.status(201).json({ success: true, message: 'Registration successful!', data: { user, token } });
     }
 
@@ -61,11 +64,13 @@ export default async function handler(req, res) {
       if (!user.isActive) return res.status(403).json({ success: false, message: 'Account pending approval' });
       const { password, ...u } = user;
       const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+      await prisma.$disconnect();
       return res.json({ success: true, message: 'Login successful', data: { user: u, token } });
     }
 
     if (path === '/api/deposits/submit' && method === 'POST') {
       const deposit = await prisma.deposit.create({ data: { amount: parseFloat(body.amount), status: 'PAYMENT_SUBMITTED' } });
+      await prisma.$disconnect();
       return res.json({ success: true, data: deposit });
     }
 
@@ -73,8 +78,11 @@ export default async function handler(req, res) {
   } catch (err) {
     const e = err;
     if (e instanceof z.ZodError) return res.status(400).json({ success: false, message: 'Validation error', errors: e.errors });
+    if (err.message?.includes('connect')) {
+      return res.status(503).json({ success: false, message: 'Database unavailable', error: err.message });
+    }
     return res.status(500).json({ success: false, message: err.message || 'Server error' });
   } finally {
-    await prisma.$disconnect();
+    try { await prisma.$disconnect(); } catch {}
   }
 }
