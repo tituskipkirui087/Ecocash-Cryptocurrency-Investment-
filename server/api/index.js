@@ -8,8 +8,15 @@ let prisma = null;
 
 const getPrisma = () => {
   if (!prisma) {
-    const url = process.env.DATABASE_URL || 
-      `postgresql://postgres:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST?.replace(':5432', '')}/${process.env.POSTGRES_DATABASE || 'postgres'}`;
+    // Use DATABASE_URL if set, otherwise construct from POSTGRES_* variables
+    // The Vercel Postgres integration may set POSTGRES_HOST to the pooler
+    let url = process.env.DATABASE_URL;
+    if (!url) {
+      const host = process.env.POSTGRES_HOST || '';
+      const password = process.env.POSTGRES_PASSWORD || '';
+      const database = process.env.POSTGRES_DATABASE || 'postgres';
+      url = `postgresql://postgres:${password}@${host}/${database}`;
+    }
     prisma = new PrismaClient({
       datasources: { db: { url } }
     });
