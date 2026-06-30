@@ -22,7 +22,10 @@ console.log('Supabase init:', {
   keyPrefix: supabaseKey ? supabaseKey.substring(0, 15) : 'NOT_SET'
 });
 
-const supabase = supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+const supabase = supabaseKey ? createClient(supabaseUrl, supabaseKey, {
+  db: { schema: 'public' },
+  auth: { persistSession: false }
+}) : null;
 
 export default async function handler(req, res) {
   const { method, url } = req;
@@ -61,15 +64,15 @@ export default async function handler(req, res) {
 
   try {
     if (path === '/api/investments/plans') {
-      try {
-        const { data: plans, error } = await supabase.from('investment_plans').select('*');
-        console.log('Query result:', { data: plans, error });
-        if (error) throw error;
-        return res.json({ success: true, data: plans });
-      } catch (e) {
-        console.log('Full error:', JSON.stringify(e, null, 2));
-        throw e;
+      console.log('Querying investment_plans...');
+      const result = await supabase.from('investment_plans').select('*');
+      const { data: plans, error, count } = result;
+      console.log('Query completed:', { data: plans, error, hasError: !!error });
+      if (error) {
+        console.log('Error details:', error);
+        throw error;
       }
+      return res.json({ success: true, data: plans });
     }
 
     if (path === '/api/deposits' && method === 'GET') {
