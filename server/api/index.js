@@ -5,11 +5,9 @@ import { z } from 'zod';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://xgotkgxnsupvdzsorlij.supabase.co';
 
-// Try secret key first
 let supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 let keyType = 'SECRET';
 
-// Fallback to publishable key if no secret
 if (!supabaseKey) {
   supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
   keyType = 'PUBLIC';
@@ -53,7 +51,7 @@ export default async function handler(req, res) {
   if (!supabase) {
     return res.status(500).json({ 
       success: false, 
-      message: 'Supabase client not configured. Set SUPABASE_SECRET_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.' 
+      message: 'Supabase client not configured' 
     });
   }
 
@@ -64,15 +62,33 @@ export default async function handler(req, res) {
 
   try {
     if (path === '/api/investments/plans') {
-      console.log('Querying investment_plans...');
-      const result = await supabase.from('investment_plans').select('*');
-      const { data: plans, error, count } = result;
-      console.log('Query completed:', { data: plans, error, hasError: !!error });
-      if (error) {
-        console.log('Error details:', error);
-        throw error;
+      try {
+        const queryParams = new URLSearchParams({ select: '*' }).toString();
+        const response = await fetch(`${supabaseUrl}/rest/v1/investment_plans?${queryParams}`, {
+          method: 'GET',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const data = await response.json();
+        console.log('REST API response:', { status: response.status, data });
+        
+        if (!response.ok) {
+          return res.status(500).json({ 
+            success: false, 
+            message: data.message || 'REST API error',
+            details: data 
+          });
+        }
+        
+        return res.json({ success: true, data });
+      } catch (e) {
+        console.log('Fetch error:', e);
+        throw e;
       }
-      return res.json({ success: true, data: plans });
     }
 
     if (path === '/api/deposits' && method === 'GET') {
