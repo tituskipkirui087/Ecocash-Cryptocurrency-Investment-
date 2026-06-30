@@ -12,6 +12,8 @@ const supabaseKey = process.env.SUPABASE_SECRET_KEY ||
                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 console.log('Supabase config:', {
+  hasSecretKey: !!process.env.SUPABASE_SECRET_KEY,
+  hasPublishableKey: !!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   url: supabaseUrl,
   keyType: supabaseKey ? (supabaseKey.includes('sb_secret') ? 'SECRET' : 'PUBLIC') : 'NONE',
   keyPrefix: supabaseKey ? supabaseKey.substring(0, 20) : 'NOT_SET'
