@@ -3,17 +3,12 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 
+// Supabase client for REST API access
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://xgotkgxnsupvdzsorlij.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '';
 
-// Priority: Secret key (for server-side) > Publishable key (for client-side)
-// The secret key starts with 'sb_secret' and provides full database access
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || 
-                   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-                   process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-console.log('Supabase key type:', supabaseKey ? (supabaseKey.startsWith('sb_secret') ? 'SECRET' : 'PUBLISHABLE') : 'NONE');
-
-const supabase = supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+// Create supabase client with anon key (for basic operations)
+const supabase = supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 export default async function handler(req, res) {
   const { method, url } = req;
@@ -28,10 +23,6 @@ export default async function handler(req, res) {
 
   if (path === '/api/health') {
     return res.json({ status: 'ok', timestamp: new Date().toISOString() });
-  }
-
-  if (!supabase) {
-    return res.status(500).json({ success: false, message: 'Supabase client not configured. Add SUPABASE_SECRET_KEY to Vercel environment variables.' });
   }
 
   let body = {};
