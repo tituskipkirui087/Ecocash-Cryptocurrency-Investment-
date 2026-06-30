@@ -54,12 +54,15 @@ export default async function handler(req, res) {
 
   try {
     if (path === '/api/investments/plans') {
-      const { data: plans, error } = await supabase.from('investment_plans').select('*');
-      if (error) {
-        console.log('Query error:', error);
-        throw error;
+      try {
+        const { data: plans, error } = await supabase.from('investment_plans').select('*');
+        console.log('Query result:', { data: plans, error });
+        if (error) throw error;
+        return res.json({ success: true, data: plans });
+      } catch (e) {
+        console.log('Full error:', JSON.stringify(e, null, 2));
+        throw e;
       }
-      return res.json({ success: true, data: plans });
     }
 
     if (path === '/api/deposits' && method === 'GET') {
