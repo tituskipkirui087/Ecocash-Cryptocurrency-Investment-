@@ -3,21 +3,17 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 
-// Supabase client for REST API access
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://xgotkgxnsupvdzsorlij.supabase.co';
 
-// Use the secret key for full server-side access, fallback to publishable key
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || 
-                   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 
-                   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+// Try secret key first
+let supabaseKey = process.env.SUPABASE_SECRET_KEY || '';
+let keyType = 'SECRET';
 
-console.log('Supabase config:', {
-  hasSecretKey: !!process.env.SUPABASE_SECRET_KEY,
-  hasPublishableKey: !!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-  url: supabaseUrl,
-  keyType: supabaseKey ? (supabaseKey.includes('sb_secret') ? 'SECRET' : 'PUBLIC') : 'NONE',
-  keyPrefix: supabaseKey ? supabaseKey.substring(0, 20) : 'NOT_SET'
-});
+// Fallback to publishable key if no secret
+if (!supabaseKey) {
+  supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  keyType = 'PUBLIC';
+}
 
 const supabase = supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
@@ -36,6 +32,13 @@ export default async function handler(req, res) {
     return res.json({ status: 'ok', timestamp: new Date().toISOString() });
   }
 
+  if (!supabase) {
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Supabase client not configured. Set SUPABASE_SECRET_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.' 
+    });
+  }
+
   let body = {};
   if (req.body) {
     body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
@@ -44,7 +47,10 @@ export default async function handler(req, res) {
   try {
     if (path === '/api/investments/plans') {
       const { data: plans, error } = await supabase.from('investment_plans').select('*');
-      if (error) throw error;
+      if (error) {
+        console.log('Query error:', error);
+        throw error;
+      }
       return res.json({ success: true, data: plans });
     }
 
