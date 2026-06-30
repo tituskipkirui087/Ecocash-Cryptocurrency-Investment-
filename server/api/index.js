@@ -1,30 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://xgotkgxnsupvdzsorlij.supabase.co';
-const apiUrl = `${supabaseUrl}/rest/v1`;
-
-let supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-let keyType = 'SECRET';
-
-if (!supabaseKey) {
-  supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-  keyType = 'PUBLIC';
-}
-
-console.log('Supabase init:', {
-  hasSecretKey: !!process.env.SUPABASE_SECRET_KEY,
-  hasPublishableKey: !!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-  url: supabaseUrl,
-  keyPrefix: supabaseKey ? supabaseKey.substring(0, 15) : 'NOT_SET'
-});
-
-const supabase = supabaseKey ? createClient(supabaseUrl, supabaseKey, {
-  db: { schema: 'public' },
-  auth: { persistSession: false }
-}) : null;
+const prisma = new PrismaClient();
 
 export default async function handler(req, res) {
   const { method, url } = req;
@@ -38,22 +17,7 @@ export default async function handler(req, res) {
   if (method === 'OPTIONS') return res.status(200).end();
 
   if (path === '/api/health') {
-    return res.json({ 
-      status: 'ok', 
-      timestamp: new Date().toISOString(),
-      debug: {
-        hasSecretKey: !!process.env.SUPABASE_SECRET_KEY,
-        hasPublishableKey: !!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-        keyType: supabaseKey ? (supabaseKey.includes('sb_secret') ? 'SECRET' : 'PUBLIC') : 'NONE'
-      }
-    });
-  }
-
-  if (!supabase) {
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Supabase client not configured' 
-    });
+    return res.json({ status: 'ok', timestamp: new Date().toISOString() });
   }
 
   let body = {};
@@ -63,38 +27,12 @@ export default async function handler(req, res) {
 
   try {
     if (path === '/api/investments/plans') {
-      try {
-        const queryParams = new URLSearchParams({ select: '*' }).toString();
-        const response = await fetch(`${apiUrl}/investment_plans?${queryParams}`, {
-          method: 'GET',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        const data = await response.json();
-        console.log('REST API response:', { status: response.status, data });
-        
-        if (!response.ok) {
-          return res.status(500).json({ 
-            success: false, 
-            message: data.message || 'REST API error',
-            details: data 
-          });
-        }
-        
-        return res.json({ success: true, data });
-      } catch (e) {
-        console.log('Fetch error:', e);
-        throw e;
-      }
+      const plans = await prisma.investmentPlans.findMany();
+      return res.json({ success: true, data: plans });
     }
 
     if (path === '/api/deposits' && method === 'GET') {
-      const { data: deposits, error } = await supabase.from('deposits').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
+      const deposits = await prisma.deposits.findMany({ orderBy: { created_at: 'desc' } });
       return res.json({ success: true, data: deposits });
     }
 
@@ -102,12 +40,11 @@ export default async function handler(req, res) {
       const schema = z.object({ email: z.string().email(), password: z.string().min(6), firstName: z.string().min(1), lastName: z.string().min(1) });
       const parsed = schema.parse(body);
       
-      const { data: existing } = await supabase.from('users').select('id').eq('email', parsed.email).single();
+      const existing = await prisma.users.findUnique({ where: { email: parsed.email } });
       if (existing) return res.status(400).json({ success: false, message: 'Email already registered' });
       
-      const { data: user, error: createError } = await supabase
-        .from('users')
-        .insert({ 
+      const user = await prisma.users.create({ 
+        data: { 
           email: parsed.email, 
           password: await bcrypt.hash(parsed.password, 10), 
           first_name: parsed.firstName,
@@ -115,11 +52,10 @@ export default async function handler(req, res) {
           is_verified: false,
           is_active: false,
           role: 'INVESTOR'
-        })
-        .select('id, email, first_name, last_name, is_verified, role, created_at')
-        .single();
+        },
+        select: { id: true, email: true, first_name: true, last_name: true, is_verified: true, role: true, created_at: true }
+      });
       
-      if (createError) throw createError;
       const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
       return res.status(201).json({ success: true, message: 'Registration successful!', data: { user, token } });
     }
@@ -128,8 +64,8 @@ export default async function handler(req, res) {
       const schema = z.object({ email: z.string().email(), password: z.string().min(1) });
       const parsed = schema.parse(body);
       
-      const { data: user, error } = await supabase.from('users').select('*').eq('email', parsed.email).single();
-      if (error || !user || !(await bcrypt.compare(parsed.password, user.password))) {
+      const user = await prisma.users.findUnique({ where: { email: parsed.email } });
+      if (!user || !(await bcrypt.compare(parsed.password, user.password))) {
         return res.status(401).json({ success: false, message: 'Invalid credentials' });
       }
       if (!user.is_active) return res.status(403).json({ success: false, message: 'Account pending approval' });
@@ -140,12 +76,13 @@ export default async function handler(req, res) {
     }
 
     if (path === '/api/deposits/submit' && method === 'POST') {
-      const { data: deposit, error } = await supabase
-        .from('deposits')
-        .insert({ amount: parseFloat(body.amount), status: 'PAYMENT_SUBMITTED', payment_method: 'ecocash' })
-        .select()
-        .single();
-      if (error) throw error;
+      const deposit = await prisma.deposits.create({
+        data: { 
+          amount: parseFloat(body.amount), 
+          status: 'PAYMENT_SUBMITTED', 
+          payment_method: 'ecocash' 
+        }
+      });
       return res.json({ success: true, data: deposit });
     }
 
@@ -154,5 +91,7 @@ export default async function handler(req, res) {
     const e = err;
     if (e instanceof z.ZodError) return res.status(400).json({ success: false, message: 'Validation error', errors: e.errors });
     return res.status(500).json({ success: false, message: err.message || 'Server error' });
+  } finally {
+    await prisma.$disconnect();
   }
 }
