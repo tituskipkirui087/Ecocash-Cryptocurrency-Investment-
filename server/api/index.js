@@ -17,7 +17,11 @@ export default async function handler(req, res) {
   if (method === 'OPTIONS') return res.status(200).end();
 
   if (path === '/api/health') {
-    return res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    return res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      version: '3.0.0-prisma'
+    });
   }
 
   let body = {};
