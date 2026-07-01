@@ -42,13 +42,10 @@ export default async function handler(req, res) {
 
 try {
     if (path === '/api/investments/plans') {
-      // Remove filter to test if data exists
       const { data, error } = await supabase.from('investment_plans').select('*');
-      if (error) {
-        console.log('Query error details:', error);
-        throw error;
-      }
-      return res.json({ success: true, count: data?.length || 0, data });
+      if (error) throw error;
+      // Return all plans since table might be empty
+      return res.json({ success: true, data: data || [] });
     }
       return res.json({ success: true, data });
     }
