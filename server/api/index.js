@@ -40,20 +40,16 @@ export default async function handler(req, res) {
     body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
   }
 
-  try {
+try {
     if (path === '/api/investments/plans') {
-      // Try simpler query first
+      // Remove filter to test if data exists
       const { data, error } = await supabase.from('investment_plans').select('*');
       if (error) {
         console.log('Query error details:', error);
-        return res.status(500).json({ 
-          success: false, 
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        });
+        throw error;
       }
+      return res.json({ success: true, count: data?.length || 0, data });
+    }
       return res.json({ success: true, data });
     }
 
