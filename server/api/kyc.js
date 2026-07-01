@@ -47,6 +47,15 @@ export const config = {
   },
 }
 
+function getRawBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = []
+    req.on('data', (chunk) => chunks.push(Buffer.from(chunk)))
+    req.on('end', () => resolve(Buffer.concat(chunks)))
+    req.on('error', reject)
+  })
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Method not allowed' })
@@ -64,12 +73,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ success: false, message: 'Invalid token' })
   }
 
-  // Collect raw body chunks
-  const chunks = []
-  for await (const chunk of req) {
-    chunks.push(chunk)
-  }
-  const rawBody = Buffer.concat(chunks)
+const rawBody = await getRawBody(req)
 
   const busboy = Busboy({ headers: req.headers })
   const fields = {}
