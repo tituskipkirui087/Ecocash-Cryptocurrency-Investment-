@@ -4,7 +4,10 @@ import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://xgotkgxnsupvdzsorlij.supabase.co';
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '';
+// The secret key should bypass RLS entirely
+const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '';
+
+console.log('Init - Key type:', supabaseKey ? (supabaseKey.startsWith('sb_secret') ? 'SECRET' : 'PUBLIC') : 'NONE');
 
 const supabase = supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
@@ -36,8 +39,18 @@ export default async function handler(req, res) {
 
   try {
     if (path === '/api/investments/plans') {
-      const { data, error } = await supabase.from('investment_plans').select('*').eq('is_active', true);
-      if (error) throw error;
+      // Try simpler query first
+      const { data, error } = await supabase.from('investment_plans').select('*');
+      if (error) {
+        console.log('Query error details:', error);
+        return res.status(500).json({ 
+          success: false, 
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+      }
       return res.json({ success: true, data });
     }
 
