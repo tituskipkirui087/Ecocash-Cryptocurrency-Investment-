@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
 import Busboy from 'busboy';
-import getRawBody from 'raw-body';
 
 // Helper to get raw body buffer
 const getBodyBuffer = (req) => {
@@ -50,7 +49,12 @@ export default async function handler(req, res) {
       return res.status(401).json({ success: false, message: 'Invalid token' })
     }
 
+    // Log content type to help debug
+    console.log('Content-Type:', req.headers['content-type'])
+    console.log('Content-Length:', req.headers['content-length'])
+
     const rawBodyBuffer = await getBodyBuffer(req)
+    console.log('Raw body length:', rawBodyBuffer?.length)
     const fields = {}
     const files = {}
 
