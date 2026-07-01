@@ -4,10 +4,13 @@ import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://xgotkgxnsupvdzsorlij.supabase.co';
-// The secret key should bypass RLS entirely
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '';
+// Try to find any available key
+const supabaseKey = process.env.SUPABASE_SECRET_KEY || 
+                   process.env.SUPABASE_SERVICE_ROLE_KEY || 
+                   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 
+                   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-console.log('Init - Key type:', supabaseKey ? (supabaseKey.startsWith('sb_secret') ? 'SECRET' : 'PUBLIC') : 'NONE');
+console.log('Key found:', supabaseKey ? 'yes' : 'no', supabaseKey ? supabaseKey.substring(0, 15) : '');
 
 const supabase = supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
