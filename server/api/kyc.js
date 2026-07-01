@@ -27,6 +27,9 @@ export const config = {
 }
 
 export default async function handler(req, res) {
+  // Add very early logging
+  console.log('KYC handler invoked:', { method: req.method, url: req.url })
+  
   res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || '*')
   res.setHeader('Access-Control-Allow-Credentials', 'true')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
