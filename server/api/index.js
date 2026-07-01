@@ -2,8 +2,13 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
+import { createClient } from '@supabase/supabase-js';
 
-const prisma = new PrismaClient();
+// Use Supabase REST API with publishable key (simpler for serverless)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://xgotkgxnsupvdzsorlij.supabase.co';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+const supabase = supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 export default async function handler(req, res) {
   const { method, url } = req;
@@ -20,6 +25,13 @@ export default async function handler(req, res) {
     return res.json({ status: 'ok', timestamp: new Date().toISOString() });
   }
 
+  if (!supabase) {
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Supabase client not configured' 
+    });
+  }
+
   let body = {};
   if (req.body) {
     body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
@@ -27,12 +39,14 @@ export default async function handler(req, res) {
 
   try {
     if (path === '/api/investments/plans') {
-      const plans = await prisma.investmentPlan.findMany();
+      const { data: plans, error } = await supabase.from('investment_plans').select('*').eq('is_active', true).order('sort_order');
+      if (error) throw error;
       return res.json({ success: true, data: plans });
     }
 
     if (path === '/api/deposits' && method === 'GET') {
-      const deposits = await prisma.deposit.findMany({ orderBy: { createdAt: 'desc' } });
+      const { data: deposits, error } = await supabase.from('deposits').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
       return res.json({ success: true, data: deposits });
     }
 
@@ -40,22 +54,24 @@ export default async function handler(req, res) {
       const schema = z.object({ email: z.string().email(), password: z.string().min(6), firstName: z.string().min(1), lastName: z.string().min(1) });
       const parsed = schema.parse(body);
       
-      const existing = await prisma.user.findUnique({ where: { email: parsed.email } });
+      const { data: existing } = await supabase.from('users').select('id').eq('email', parsed.email).single();
       if (existing) return res.status(400).json({ success: false, message: 'Email already registered' });
       
-      const user = await prisma.user.create({ 
-        data: { 
+      const { data: user, error: createError } = await supabase
+        .from('users')
+        .insert({ 
           email: parsed.email, 
           password: await bcrypt.hash(parsed.password, 10), 
-          firstName: parsed.firstName,
-          lastName: parsed.lastName,
-          isVerified: false,
-          isActive: false,
+          first_name: parsed.firstName,
+          last_name: parsed.lastName,
+          is_verified: false,
+          is_active: false,
           role: 'INVESTOR'
-        },
-        select: { id: true, email: true, firstName: true, lastName: true, isVerified: true, role: true, createdAt: true }
-      });
+        })
+        .select('id, email, first_name, last_name, is_verified, role, created_at')
+        .single();
       
+      if (createError) throw createError;
       const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
       return res.status(201).json({ success: true, message: 'Registration successful!', data: { user, token } });
     }
@@ -64,11 +80,11 @@ export default async function handler(req, res) {
       const schema = z.object({ email: z.string().email(), password: z.string().min(1) });
       const parsed = schema.parse(body);
       
-      const user = await prisma.user.findUnique({ where: { email: parsed.email } });
-      if (!user || !(await bcrypt.compare(parsed.password, user.password))) {
+      const { data: user, error } = await supabase.from('users').select('*').eq('email', parsed.email).single();
+      if (error || !user || !(await bcrypt.compare(parsed.password, user.password))) {
         return res.status(401).json({ success: false, message: 'Invalid credentials' });
       }
-      if (!user.isActive) return res.status(403).json({ success: false, message: 'Account pending approval' });
+      if (!user.is_active) return res.status(403).json({ success: false, message: 'Account pending approval' });
       
       const { password, ...u } = user;
       const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -76,13 +92,12 @@ export default async function handler(req, res) {
     }
 
     if (path === '/api/deposits/submit' && method === 'POST') {
-      const deposit = await prisma.deposit.create({
-        data: { 
-          amount: parseFloat(body.amount), 
-          status: 'PAYMENT_SUBMITTED', 
-          paymentMethod: 'ecocash' 
-        }
-      });
+      const { data: deposit, error } = await supabase
+        .from('deposits')
+        .insert({ amount: parseFloat(body.amount), status: 'PAYMENT_SUBMITTED', payment_method: 'ecocash' })
+        .select()
+        .single();
+      if (error) throw error;
       return res.json({ success: true, data: deposit });
     }
 
@@ -91,7 +106,5 @@ export default async function handler(req, res) {
     const e = err;
     if (e instanceof z.ZodError) return res.status(400).json({ success: false, message: 'Validation error', errors: e.errors });
     return res.status(500).json({ success: false, message: err.message || 'Server error' });
-  } finally {
-    await prisma.$disconnect();
   }
 }
