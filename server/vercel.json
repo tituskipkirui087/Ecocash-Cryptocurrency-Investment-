@@ -16,6 +16,7 @@
   "routes": [
     {
       "src": "/api/auth/kyc",
+      "methods": ["POST", "OPTIONS"],
       "dest": "/api/kyc.js"
     },
     {
