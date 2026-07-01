@@ -6,19 +6,6 @@ import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
 import { TrendingUp, Check, Zap, Shield, Clock } from 'lucide-react'
 
-type Plan = {
-  id: string
-  name: string
-  slug: string
-  description: string
-  minAmount: number
-  maxAmount: number | null
-  returnMultiplier: number
-  tradeDurationHours: number
-  isActive: boolean
-  sortOrder: number
-}
-
 type InvestmentStatus = 'PENDING' | 'PAYMENT_RECEIVED' | 'ACTIVE_TRADE' | 'CLOSED' | 'WITHDRAWN'
 
 type PendingPayment = {
@@ -28,19 +15,17 @@ type PendingPayment = {
   ecocashReference: string | null
 }
 
-
 export default function InvestmentsPage() {
   const [view, setView] = useState<'packages' | 'history' | 'form' | 'pending'>('packages')
-  const [plans, setPlans] = useState<Plan[]>([])
+  const [plans, setPlans] = useState<any[]>([])
   const [investments, setInvestments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
+  const [selectedPlan, setSelectedPlan] = useState<any | null>(null)
   const [formData, setFormData] = useState({ amount: '', paymentMethod: 'ECOCASH', planId: '' })
   const [pendingPayment, setPendingPayment] = useState<PendingPayment | null>(null)
   const [eventSource, setEventSource] = useState<EventSource | null>(null)
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const toastShownRef = useRef({ details: false, approved: false })
-  const router = useRouter()
 
   useEffect(() => {
     fetchPlans()
@@ -76,9 +61,9 @@ export default function InvestmentsPage() {
       if (latest && (latest.status === 'WAITING_FOR_PAYMENT_DETAILS' || latest.status === 'PAYMENT_DETAILS_SENT' || latest.status === 'PAYMENT_SUBMITTED')) {
         setPendingPayment({
           depositId: latest.id,
-          ecocashNumber: latest.ecocashNumber,
-          ecocashAccountName: latest.ecocashAccountName,
-          ecocashReference: latest.ecocashReference,
+          ecocashNumber: latest.ecocash_number,
+          ecocashAccountName: latest.ecocash_account_name,
+          ecocashReference: latest.ecocash_reference,
         })
         setView('pending')
         setupSSE()
@@ -88,9 +73,9 @@ export default function InvestmentsPage() {
     }
   }
 
-  const handleSelectPlan = (plan: Plan) => {
+  const handleSelectPlan = (plan: any) => {
     setSelectedPlan(plan)
-    setFormData({ amount: String(plan.minAmount), paymentMethod: 'ECOCASH', planId: plan.id })
+    setFormData({ amount: String(plan.min_amount), paymentMethod: 'ECOCASH', planId: plan.id })
     setView('form')
   }
 
@@ -98,11 +83,20 @@ export default function InvestmentsPage() {
     e.preventDefault()
     toastShownRef.current = { details: false, approved: false }
     try {
-      const res = await api.post('investments', {
-        ...formData,
-        amount: Number(formData.amount),
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/investments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          amount: Number(formData.amount),
+        }),
       })
-      const { investment, depositId } = res.data.data
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Failed')
+      const { investment, depositId } = data.data
       
       setPendingPayment({
         depositId: depositId,
@@ -117,7 +111,7 @@ export default function InvestmentsPage() {
       setView('pending')
       fetchInvestments()
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed')
+      toast.error(err.message || 'Failed')
     }
   }
 
@@ -161,12 +155,12 @@ export default function InvestmentsPage() {
       try {
         const { data } = await api.get('deposits')
         const latest = data.data?.[0]
-        if (latest?.ecocashNumber && !pendingPayment?.ecocashNumber) {
+        if (latest?.ecocash_number && !pendingPayment?.ecocashNumber) {
           setPendingPayment({
             depositId: latest.id,
-            ecocashNumber: latest.ecocashNumber,
-            ecocashAccountName: latest.ecocashAccountName,
-            ecocashReference: latest.ecocashReference,
+            ecocashNumber: latest.ecocash_number,
+            ecocashAccountName: latest.ecocash_account_name,
+            ecocashReference: latest.ecocash_reference,
           })
           if (!toastShownRef.current.details) {
             toastShownRef.current.details = true
@@ -266,8 +260,9 @@ export default function InvestmentsPage() {
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {plans.map((plan, idx) => {
-              const profitReturn = plan.minAmount * plan.returnMultiplier
               const isPopular = plan.slug === 'professional'
+              const minAmt = Number(plan.min_amount) || 0
+              const profitReturn = minAmt * (plan.return_multiplier || 1)
               return (
                 <div
                   key={plan.id}
@@ -295,19 +290,19 @@ export default function InvestmentsPage() {
                   <div className="mt-5 space-y-2.5">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Investment</span>
-                      <span className="font-semibold text-gray-900">${plan.minAmount}{plan.maxAmount ? ` - $${plan.maxAmount}` : '+'}</span>
+                      <span className="font-semibold text-gray-900">${minAmt.toFixed(2)}{plan.max_amount ? ` - $${Number(plan.max_amount).toFixed(2)}` : '+'}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Your Profit</span>
-                      <span className="font-semibold text-brand-blue">${profitReturn.toLocaleString()}</span>
+                      <span className="font-semibold text-brand-blue">${profitReturn.toFixed(2)}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Duration</span>
-                      <span className="font-semibold text-gray-900">{plan.tradeDurationHours}h</span>
+                      <span className="font-semibold text-gray-900">{plan.trade_duration_hours}h</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Return</span>
-                      <span className="font-bold text-brand-blue">{plan.returnMultiplier}x</span>
+                      <span className="font-bold text-brand-blue">{plan.return_multiplier}x</span>
                     </div>
                   </div>
 
@@ -364,7 +359,7 @@ export default function InvestmentsPage() {
               <div className="text-right">
                 <p className="text-xs text-gray-600">Expected Profit</p>
                 <p className="text-base font-bold text-brand-blue">
-                  ${(selectedPlan.minAmount * selectedPlan.returnMultiplier).toLocaleString()}
+                  ${(Number(selectedPlan.min_amount) * Number(selectedPlan.return_multiplier)).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -376,12 +371,12 @@ export default function InvestmentsPage() {
                 <label className="block text-sm font-medium text-gray-700">Investment Amount (USD)</label>
                 <input
                   type="number"
-                  min={selectedPlan.minAmount}
-                  max={selectedPlan.maxAmount || undefined}
+                  min={selectedPlan.min_amount}
+                  max={selectedPlan.max_amount || undefined}
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                   className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
-                  placeholder={`Min $${selectedPlan.minAmount}`}
+                  placeholder={`Min $${Number(selectedPlan.min_amount).toFixed(2)}`}
                   required
                 />
               </div>
@@ -396,8 +391,7 @@ export default function InvestmentsPage() {
               </div>
             </div>
             <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
-              <p><strong>How it works:</strong> EcoCash will trade on your behalf for {selectedPlan.tradeDurationHours} hours.
-              After the trade closes, you receive {selectedPlan.returnMultiplier}x your investment.</p>
+              <p><strong>How it works:</strong> EcoCash will trade on your behalf for {selectedPlan.trade_duration_hours} hours. After the trade closes, you receive {selectedPlan.return_multiplier}x your investment as profit.</p>
             </div>
             <div className="flex gap-3">
               <button type="submit" className="rounded-xl bg-gradient-to-r from-brand-blue to-brand-sky px-5 py-2 text-sm font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90 transition-all">
@@ -452,15 +446,15 @@ export default function InvestmentsPage() {
                     if (file) {
                       const form = new FormData()
                       form.append('receipt', file)
-                      form.append('depositId', pendingPayment.depositId || '')
                       try {
-                        await fetch(`${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, '') || ''}/api/deposits/upload-receipt`, {
+                        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/deposits/${pendingPayment.depositId}/upload-receipt`, {
                           method: 'POST',
                           headers: {
                             'Authorization': `Bearer ${localStorage.getItem('token')}`,
                           },
                           body: form,
                         })
+                        if (!res.ok) throw new Error('Upload failed')
                         toast.success('Payment proof submitted!')
                         setView('packages')
                         fetchInvestments()
@@ -510,21 +504,26 @@ export default function InvestmentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {investments.map((inv) => (
+              {investments.map((inv) => {
+                const plan = inv.plan || {}
+                const minAmt = plan.min_amount
+                const profitReturn = minAmt ? minAmt * (plan.return_multiplier || 1) : inv.deposit_amount || 0
+                return (
                 <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3 text-sm font-medium text-gray-900">{inv.investmentId}</td>
-                  <td className="px-5 py-3 text-sm text-gray-600">{inv.plan?.name || '-'}</td>
-                  <td className="px-5 py-3 text-sm text-gray-600">${Number(inv.depositAmount).toLocaleString()}</td>
-                  <td className="px-5 py-3 text-sm text-gray-600">${Number(inv.currentBalance).toLocaleString()}</td>
-                  <td className="px-5 py-3 text-sm text-gray-600">+{Number(inv.profitPercentage)}%</td>
+                  <td className="px-5 py-3 text-sm font-medium text-gray-900">{inv.investment_id}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600">{plan.name || '-'}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600">${Number(inv.deposit_amount || 0).toLocaleString()}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600">${Number(inv.current_balance || 0).toLocaleString()}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600">+${Number(profitReturn).toLocaleString()}</td>
                   <td className="px-5 py-3">
                     <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${statusColors[inv.status as InvestmentStatus]}`}>
-                      {inv.status.replace(/_/g, ' ')}
+                      {inv.status?.replace(/_/g, ' ') || '-'}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-sm text-gray-600">{new Date(inv.createdAt).toLocaleDateString()}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600">{new Date(inv.created_at).toLocaleDateString()}</td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
           {investments.length === 0 && <div className="p-8 text-center text-gray-500">No investments yet. Choose a package to get started!</div>}

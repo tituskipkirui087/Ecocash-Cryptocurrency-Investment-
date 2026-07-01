@@ -40,7 +40,7 @@ export default function DepositsPage() {
       <div className="rounded-3xl border bg-white p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">EcoCash Instructions</h3>
         <div className="space-y-2">
-          <p className="text-sm text-gray-600">Minimum Amount: <span className="font-bold text-brand-blue">$100</span></p>
+          <p className="text-sm text-gray-600">Minimum Amount: <span className="font-bold text-brand-blue">$50</span></p>
           <p className="text-sm text-gray-600">Please wait for EcoCash payment details from the administrator after submitting your investment request.</p>
         </div>
       </div>
@@ -56,21 +56,21 @@ export default function DepositsPage() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {deposits.map((dep: any) => (
-              <tr key={dep.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-5 py-3 text-sm text-gray-600">{new Date(dep.createdAt).toLocaleDateString()}</td>
-                <td className="px-5 py-3 text-sm font-medium text-gray-900">${Number(dep.amount).toLocaleString()}</td>
-                <td className="px-5 py-3 text-sm text-gray-600">
-                  {dep.ecocashNumber ? (
-                    <div>
-                      <p className="font-medium">{dep.ecocashNumber}</p>
-                      <p className="text-xs text-gray-500">{dep.ecocashAccountName}</p>
-                      {dep.ecocashReference && <p className="text-xs text-gray-500">Ref: {dep.ecocashReference}</p>}
-                    </div>
-                  ) : (
-                    '-'
-                  )}
-                </td>
+{deposits.map((dep: any) => (
+               <tr key={dep.id} className="hover:bg-gray-50 transition-colors">
+                 <td className="px-5 py-3 text-sm text-gray-600">{new Date(dep.created_at).toLocaleDateString()}</td>
+                 <td className="px-5 py-3 text-sm font-medium text-gray-900">${Number(dep.amount).toLocaleString()}</td>
+                 <td className="px-5 py-3 text-sm text-gray-600">
+                   {dep.ecocash_number ? (
+                     <div>
+                       <p className="font-medium">{dep.ecocash_number}</p>
+                       <p className="text-xs text-gray-500">{dep.ecocash_account_name}</p>
+                       {dep.ecocash_reference && <p className="text-xs text-gray-500">Ref: {dep.ecocash_reference}</p>}
+                     </div>
+                   ) : (
+                     '-'
+                   )}
+                 </td>
                 <td className="px-5 py-3">
                   <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${statusColors[dep.status as DepositStatus]}`}>
                     {dep.status.replace(/_/g, ' ')}

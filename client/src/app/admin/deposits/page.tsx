@@ -26,8 +26,25 @@ export default function AdminDepositsPage() {
 
   const approveDeposit = async (id: string) => {
     try {
-          await api.put(`deposits/${id}/approve`, {})
+      await api.put(`deposits/${id}/approve`)
       toast.success('Deposit approved')
+      fetchDeposits()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed')
+    }
+  }
+
+  const sendPaymentDetails = async (id: string) => {
+    const ecocashNumber = prompt('Enter EcoCash Number:')
+    const ecocashAccountName = prompt('Enter Account Name:')
+    const ecocashReference = prompt('Enter Reference (optional):')
+    if (!ecocashNumber || !ecocashAccountName) {
+      toast.error('Payment details required')
+      return
+    }
+    try {
+      await api.put(`deposits/${id}/send-details`, { ecocashNumber, ecocashAccountName, ecocashReference })
+      toast.success('Payment details sent to user')
       fetchDeposits()
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed')
@@ -36,7 +53,7 @@ export default function AdminDepositsPage() {
 
   const rejectDeposit = async (id: string) => {
     try {
-          await api.put(`deposits/${id}/reject`, {})
+      await api.put(`deposits/${id}/reject`)
       toast.success('Deposit rejected')
       fetchDeposits()
     } catch (err: any) {
@@ -65,11 +82,11 @@ export default function AdminDepositsPage() {
             <tbody className="divide-y">
               {deposits.map((dep) => (
                 <tr key={dep.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-600">{new Date(dep.createdAt).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{dep.user.firstName} {dep.user.lastName}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{new Date(dep.created_at).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{dep.user?.first_name} {dep.user?.last_name}</td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">${Number(dep.amount).toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{dep.paymentMethod.replace(/_/g, ' ')}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{dep.status.replace(/_/g, ' ')}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{dep.payment_method?.replace(/_/g, ' ')}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{dep.status?.replace(/_/g, ' ')}</td>
                   <td className="px-6 py-4 flex gap-2">
                     {dep.status === 'PAYMENT_SUBMITTED' && (
                       <>
@@ -82,7 +99,7 @@ export default function AdminDepositsPage() {
                       </>
                     )}
                     {dep.status === 'WAITING_FOR_PAYMENT_DETAILS' && (
-                      <button onClick={() => approveDeposit(dep.id)} className="flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100">
+                      <button onClick={() => sendPaymentDetails(dep.id)} className="flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100">
                         <Send size={14} /> Send Details
                       </button>
                     )}

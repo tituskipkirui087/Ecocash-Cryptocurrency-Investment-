@@ -25,10 +25,33 @@ export default function AdminUsersPage() {
     }
   }
 
-  const toggleStatus = async (userId: string) => {
+  const approveUser = async (userId: string) => {
+    if (!confirm('Approve this user?')) return
     try {
-        await api.put(`admin/users/${userId}/status`, { isActive: false })
-      toast.success('User status updated')
+      await api.put(`admin/users/${userId}/approve`)
+      toast.success('User approved')
+      fetchUsers()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed')
+    }
+  }
+
+  const approveKyc = async (userId: string) => {
+    if (!confirm('Approve KYC for this user?')) return
+    try {
+      await api.put(`admin/users/${userId}/approve-kyc`)
+      toast.success('KYC approved')
+      fetchUsers()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed')
+    }
+  }
+
+  const rejectKyc = async (userId: string) => {
+    if (!confirm('Reject KYC for this user?')) return
+    try {
+      await api.put(`admin/users/${userId}/reject-kyc`)
+      toast.success('KYC rejected')
       fetchUsers()
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed')
@@ -36,7 +59,7 @@ export default function AdminUsersPage() {
   }
 
   const filteredUsers = users.filter((u) =>
-    `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(search.toLowerCase())
+    `${u.first_name} ${u.last_name} ${u.email}`.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -66,29 +89,59 @@ export default function AdminUsersPage() {
                 <th className="px-6 py-3">Name</th>
                 <th className="px-6 py-3">Email</th>
                 <th className="px-6 py-3">Phone</th>
-                <th className="px-6 py-3">Verified</th>
-                <th className="px-6 py-3">Investments</th>
-                <th className="px-6 py-3">Joined</th>
+                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3">KYC</th>
                 <th className="px-6 py-3">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{user.first_name} {user.last_name}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{user.phone || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{user.isVerified ? 'Yes' : 'No'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{user._count?.investments || 0}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{new Date(user.createdAt).toLocaleDateString()}</td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() => toggleStatus(user.id)}
-                      className="flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
-                    >
-                      <Shield size={14} />
-                      {user.isActive ? 'Deactivate' : 'Activate'}
-                    </button>
+                  <td className="px-6 py-4 text-sm">
+                    <span className={`inline-block rounded-full px-2 py-1 text-xs ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {user.is_active ? 'Active' : 'Pending'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    <span className={`inline-block rounded-full px-2 py-1 text-xs ${
+                      user.kyc_status === 'APPROVED' ? 'bg-green-100 text-green-800' : 
+                      user.kyc_status === 'SUBMITTED' ? 'bg-yellow-100 text-yellow-800' : 
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {user.kyc_status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 flex gap-2">
+                    {!user.is_active && (
+                      <button
+                        onClick={() => approveUser(user.id)}
+                        className="flex items-center gap-1 rounded bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
+                      >
+                        <Shield size={14} />
+                        Approve
+                      </button>
+                    )}
+                    {user.kyc_status === 'SUBMITTED' && (
+                      <>
+                        <button
+                          onClick={() => approveKyc(user.id)}
+                          className="flex items-center gap-1 rounded bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
+                        >
+                          <Shield size={14} />
+                          Approve KYC
+                        </button>
+                        <button
+                          onClick={() => rejectKyc(user.id)}
+                          className="flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                        >
+                          <Shield size={14} />
+                          Reject KYC
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

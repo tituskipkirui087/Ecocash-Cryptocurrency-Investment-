@@ -9,9 +9,9 @@ import { Mail, Phone, Save, Camera, LogOut, Shield, User as UserIcon } from 'luc
 export default function ProfilePage() {
   const { user, token, logout, updateUser } = useAuth()
   const [formData, setFormData] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
-    phone: (user as any)?.phone || '',
+    firstName: '',
+    lastName: '',
+    phone: '',
   })
   const [loading, setLoading] = useState(false)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
@@ -19,10 +19,43 @@ export default function ProfilePage() {
   const [showKycConfirmed, setShowKycConfirmed] = useState(false)
 
   useEffect(() => {
-    if (user?.avatar) {
-      setAvatarPreview(user.avatar)
+    fetchProfile()
+  }, [])
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        phone: user.phone || '',
+      })
+      if (user.avatar) {
+        setAvatarPreview(user.avatar)
+      }
     }
-  }, [user?.avatar])
+  }, [user])
+
+  const fetchProfile = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/profile`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      })
+      if (res.ok) {
+        const { data } = await res.json()
+        updateUser({
+          ...user,
+          ...data,
+          firstName: data.first_name,
+          lastName: data.last_name,
+          kycStatus: data.kyc_status,
+        } as any)
+      }
+    } catch (err) {
+      console.error('Failed to fetch profile:', err)
+    }
+  }
 
   useEffect(() => {
     // Show KYC confirmation when user becomes verified
@@ -52,20 +85,21 @@ export default function ProfilePage() {
     try {
       const form = new FormData()
       form.append('avatar', file)
-      const { data } = await api.post('auth/avatar', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/avatar`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: form,
       })
-      const storedUser = localStorage.getItem('user')
-      if (storedUser && data.data?.avatar) {
-        const parsed = JSON.parse(storedUser)
-        parsed.avatar = data.data.avatar
-        localStorage.setItem('user', JSON.stringify(parsed))
-        localStorage.setItem('authUser', JSON.stringify(parsed))
-        updateUser(parsed)
+      if (!res.ok) throw new Error('Upload failed')
+      const { data } = await res.json()
+      if (data.data?.avatar) {
+        updateUser({ ...user, avatar: data.data.avatar } as any)
       }
       toast.success('Profile image updated')
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to upload image')
+      toast.error('Failed to upload image')
     }
   }
 
@@ -73,11 +107,20 @@ export default function ProfilePage() {
     e.preventDefault()
     setLoading(true)
     try {
-      await api.put('auth/profile', formData)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/profile`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+      if (!res.ok) throw new Error('Update failed')
+      const { data } = await res.json()
+      updateUser({ ...user, ...data, firstName: data.first_name, lastName: data.last_name } as any)
       toast.success('Profile updated successfully')
-      updateUser({ ...user, ...formData } as any)
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to update profile')
+      toast.error(err.message || 'Failed to update profile')
     } finally {
       setLoading(false)
     }
