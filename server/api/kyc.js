@@ -64,26 +64,16 @@ export default async function handler(req, res) {
     return res.status(401).json({ success: false, message: 'Invalid token' })
   }
 
-  const contentType = req.headers['content-type'] || ''
-  if (!contentType.includes('multipart/form-data')) {
-    return res.status(400).json({ success: false, message: 'Multipart form data required' })
-  }
-
+  // Collect raw body chunks
   const chunks = []
-  await new Promise((resolve, reject) => {
-    const originalEnd = res.end
-    const originalWrite = res.write
-    
-    req.on('data', chunk => chunks.push(chunk))
-    req.on('end', resolve)
-    req.on('error', reject)
-  })
-  
+  for await (const chunk of req) {
+    chunks.push(chunk)
+  }
   const rawBody = Buffer.concat(chunks)
 
   const busboy = Busboy({ headers: req.headers })
   const fields = {}
-  let fileUploads = {}
+  const fileUploads = {}
 
   busboy.on('field', (fieldname, val) => {
     fields[fieldname] = val
@@ -115,7 +105,7 @@ export default async function handler(req, res) {
   const selfie = fileUploads['selfie']
   
   if (!idDocumentFront || !selfie) {
-    return res.status(400).json({ success: false, message: 'ID front and selfie are required' })
+    return res.status(400).json({ success: false, message: 'ID front and selfie are required', receivedFields: Object.keys(fields), files: Object.keys(fileUploads) })
   }
 
   let idFrontUrl = null
@@ -128,6 +118,8 @@ export default async function handler(req, res) {
       .upload(`front-${Date.now()}-${decoded.id}`, idDocumentFront.data, { contentType: idDocumentFront.mimeType })
     if (!frontErr) {
       idFrontUrl = `${supabaseUrl}/storage/v1/object/public/kyc/${frontData.path}`
+    } else {
+      console.error('Front upload error:', frontErr)
     }
     
     const { data: selfieData, error: selfieErr } = await supabase.storage
@@ -135,6 +127,8 @@ export default async function handler(req, res) {
       .upload(`selfie-${Date.now()}-${decoded.id}`, selfie.data, { contentType: selfie.mimeType })
     if (!selfieErr) {
       selfieUrl = `${supabaseUrl}/storage/v1/object/public/kyc/${selfieData.path}`
+    } else {
+      console.error('Selfie upload error:', selfieErr)
     }
     
     if (fileUploads['idDocumentBack']) {
@@ -144,6 +138,8 @@ export default async function handler(req, res) {
         .upload(`back-${Date.now()}-${decoded.id}`, backFile.data, { contentType: backFile.mimeType })
       if (!backErr) {
         idBackUrl = `${supabaseUrl}/storage/v1/object/public/kyc/${backData.path}`
+      } else {
+        console.error('Back upload error:', backErr)
       }
     }
     
