@@ -60,6 +60,113 @@ export default async function handler(req, res) {
     });
   }
 
+  // Handle KYC endpoint with multipart/form-data
+  if (path === '/api/auth/kyc' && method === 'POST') {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: 'Authorization required' })
+    }
+    const token = authHeader.substring(7)
+    let decoded
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret')
+    } catch (err) {
+      return res.status(401).json({ success: false, message: 'Invalid token' })
+    }
+
+    // Get raw body for multipart parsing
+    const chunks = []
+    for await (const chunk of req) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+    }
+    const rawBody = Buffer.concat(chunks)
+
+    // Parse with Busboy
+    const fields = {}
+    const files = {}
+    await new Promise((resolve, reject) => {
+      const busboy = Busboy({ headers: req.headers })
+      busboy.on('field', (name, val) => fields[name] = val)
+      busboy.on('file', (name, file, filename, encoding, mimetype) => {
+        const fileChunks = []
+        file.on('data', d => fileChunks.push(d))
+        file.on('end', () => {
+          files[name] = { filename, mimeType: mimetype, data: Buffer.concat(fileChunks) }
+        })
+      })
+      busboy.on('finish', resolve)
+      busboy.on('error', reject)
+      busboy.end(rawBody)
+    })
+
+    const { fullNameLegal, dateOfBirth, residentialAddress, country, idDocumentType, idDocumentNumber } = fields
+    const idDocumentFront = files['idDocumentFront']
+    const selfie = files['selfie']
+
+    if (!idDocumentFront || !selfie) {
+      return res.status(400).json({ success: false, message: 'ID front and selfie are required' })
+    }
+
+    let idFrontUrl = null, selfieUrl = null, idBackUrl = null
+
+    try {
+      if (!supabase) throw new Error('Supabase not configured')
+      const { error: frontErr } = await supabase.storage
+        .from('kyc')
+        .upload(`front-${Date.now()}-${decoded.id}`, idDocumentFront.data, { contentType: idDocumentFront.mimeType })
+      if (!frontErr) idFrontUrl = `https://xgotkgxnsupvdzsorlij.supabase.co/storage/v1/object/public/kyc/front-${Date.now()}-${decoded.id}`
+
+      const { error: selfieErr } = await supabase.storage
+        .from('kyc')
+        .upload(`selfie-${Date.now()}-${decoded.id}`, selfie.data, { contentType: selfie.mimeType })
+      if (!selfieErr) selfieUrl = `https://xgotkgxnsupvdzsorlij.supabase.co/storage/v1/object/public/kyc/selfie-${Date.now()}-${decoded.id}`
+    } catch (e) {
+      console.error('Storage upload error (continuing without files):', e)
+    }
+
+    const { data: kyc, error } = await supabase
+      .from('users')
+      .update({
+        full_name_legal: fullNameLegal,
+        date_of_birth: dateOfBirth,
+        residential_address: residentialAddress,
+        country,
+        id_document_type: idDocumentType,
+        id_document_number: idDocumentNumber,
+        id_document_front_url: idFrontUrl,
+        selfie_url: selfieUrl,
+        id_document_back_url: idBackUrl,
+        kyc_status: 'SUBMITTED'
+      })
+      .eq('id', decoded.id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('KYC update error:', error)
+      return res.status(500).json({ success: false, message: 'Failed to update KYC' })
+    }
+
+    // Telegram notification
+    if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_ADMIN_CHAT_ID) {
+      try {
+        const { default: TelegramBot } = await import('node-telegram-bot-api')
+        const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false })
+        const buttons = [
+          { text: '✅ Approve KYC', callback_data: `approve_kyc_${decoded.id}` },
+          { text: '❌ Reject KYC', callback_data: `reject_kyc_${decoded.id}` }
+        ]
+        await bot.sendMessage(process.env.TELEGRAM_ADMIN_CHAT_ID, `📋 KYC Submission\n\nUser: ${decoded.email}`, {
+          reply_markup: { inline_keyboard: buttons.map(b => [{ text: b.text, callback_data: b.callback_data }]) }
+        })
+      } catch (e) {
+        console.error('Telegram error:', e)
+      }
+    }
+
+    return res.json({ success: true, message: 'KYC submitted successfully', data: kyc })
+  }
+
   let body = req.body || {};
   if (typeof body === 'string') {
     try { body = JSON.parse(body); } catch (e) {}
