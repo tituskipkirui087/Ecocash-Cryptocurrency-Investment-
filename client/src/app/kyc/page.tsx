@@ -209,17 +209,17 @@ const handleSubmit = async (e: React.FormEvent) => {
               {showSuggestions && addressSuggestions.length > 0 && (
                 <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-32 overflow-y-auto">
                   {addressSuggestions.map((suggestion, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        setFormData({ ...formData, residentialAddress: suggestion })
-                        setShowSuggestions(false)
-                      }}
-                      className="w-full px-3 py-1.5 text-left text-xs hover:bg-gray-50 border-b last:border-b-0"
-                    >
-                      {suggestion}
-                    </button>
+<button
+                       key={idx}
+                       type="button"
+                       onClick={() => {
+                         setFormData({ ...formData, residentialAddress: suggestion })
+                         setShowSuggestions(false)
+                       }}
+                       className="w-full px-3 py-1.5 text-left text-xs hover:bg-gray-50 border-b last:border-b-0"
+>
+                        {suggestion}
+                      </button>
                   ))}
                 </div>
               )}
