@@ -64,6 +64,9 @@ export default async function handler(req, res) {
 
   console.log(`[${new Date().toISOString()}] ${method} ${path}`)
 
+  // CORS preflight already handled above
+
+  // Health check
   if (path === '/api/health') {
     return res.json({ 
       status: 'ok', 
@@ -71,9 +74,9 @@ export default async function handler(req, res) {
     });
   }
 
-  // SSE endpoint for payment updates - Vercel doesn't support persistent connections
+  // SSE endpoint - Vercel doesn't support persistent connections well
   if (path === '/api/sse/payment-updates' && method === 'GET') {
-    return res.json({ success: true, message: 'SSE not supported on Vercel - use polling fallback' })
+    return res.json({ success: true, message: 'SSE not supported on Vercel - use polling' })
   }
 
   const getUserId = (req) => {
@@ -91,7 +94,7 @@ export default async function handler(req, res) {
   }
 
   // Handle KYC endpoint with multipart/form-data
-  if (path === '/auth/kyc' && method === 'POST') {
+  if (path === '/api/auth/kyc' && method === 'POST') {
     const decoded = getUserId(req)
     if (!decoded) {
       return res.status(401).json({ success: false, message: 'Authorization required' })
@@ -209,7 +212,7 @@ export default async function handler(req, res) {
   }
 
   // Handle avatar upload with multipart/form-data
-  if (path === '/auth/avatar' && method === 'POST') {
+  if (path === '/api/auth/avatar' && method === 'POST') {
     const decoded = getUserId(req)
     if (!decoded) {
       return res.status(401).json({ success: false, message: 'Authorization required' })
@@ -248,7 +251,6 @@ export default async function handler(req, res) {
     let avatarUrl = null
     try {
       if (supabase) {
-        // Try avatars bucket first, fallback to kyc
         const avatarKey = `kyc/avatar-${Date.now()}-${decoded.id}.${avatar.filename?.split('.').pop() || 'jpg'}`
         const { error } = await supabase.storage
           .from('kyc')
@@ -272,13 +274,13 @@ export default async function handler(req, res) {
   }
 
   // Handle payment proof upload with multipart/form-data
-  if (path.match(/^\/deposits\/[^/]+\/upload-receipt$/) && method === 'POST') {
+  if (path.match(/^\/api\/deposits\/[^/]+\/upload-receipt$/) && method === 'POST') {
     const decoded = getUserId(req)
     if (!decoded) {
       return res.status(401).json({ success: false, message: 'Authorization required' })
     }
 
-    const depositId = path.split('/')[2]
+    const depositId = path.split('/')[3]
     
     const chunks = []
     await new Promise((resolve, reject) => {
@@ -358,14 +360,14 @@ export default async function handler(req, res) {
 
   try {
     // GET investments plans
-    if (path === '/investments/plans' && method === 'GET') {
+    if (path === '/api/investments/plans' && method === 'GET') {
       const { data, error } = await supabase.from('investment_plans').select('*').order('sort_order', { ascending: true });
       if (error) throw error;
       return res.json({ success: true, data });
     }
 
     // POST create investment
-    if (path === '/investments' && method === 'POST') {
+    if (path === '/api/investments' && method === 'POST') {
       const decoded = getUserId(req)
       if (!decoded) {
         return res.status(401).json({ success: false, message: 'Authorization required' })
@@ -432,7 +434,7 @@ export default async function handler(req, res) {
     }
 
     // GET user investments
-    if (path === '/investments' && method === 'GET') {
+    if (path === '/api/investments' && method === 'GET') {
       const decoded = getUserId(req)
       if (!decoded) {
         return res.status(401).json({ success: false, message: 'Authorization required' })
@@ -448,13 +450,13 @@ export default async function handler(req, res) {
     }
 
     // PUT start trade
-    if (path.match(/^\/investments\/[^/]+\/start-trade$/) && method === 'PUT') {
+    if (path.match(/^\/api\/investments\/[^/]+\/start-trade$/) && method === 'PUT') {
       const decoded = getUserId(req)
       if (!decoded) {
         return res.status(401).json({ success: false, message: 'Authorization required' })
       }
 
-      const investmentId = path.split('/')[2]
+      const investmentId = path.split('/')[3]
       
       const { data: investment, error: invErr } = await supabase
         .from('investments')
@@ -502,7 +504,7 @@ export default async function handler(req, res) {
     }
 
     // GET deposits
-    if (path === '/deposits' && method === 'GET') {
+    if (path === '/api/deposits' && method === 'GET') {
       const decoded = getUserId(req)
       if (!decoded) {
         return res.status(401).json({ success: false, message: 'Authorization required' })
@@ -518,7 +520,7 @@ export default async function handler(req, res) {
     }
 
     // GET user profile
-    if (path === '/auth/profile' && method === 'GET') {
+    if (path === '/api/auth/profile' && method === 'GET') {
       const decoded = getUserId(req)
       if (!decoded) {
         return res.status(401).json({ success: false, message: 'Authorization required' })
@@ -534,7 +536,7 @@ export default async function handler(req, res) {
     }
 
     // PUT update user profile
-    if (path === '/auth/profile' && method === 'PUT') {
+    if (path === '/api/auth/profile' && method === 'PUT') {
       const decoded = getUserId(req)
       if (!decoded) {
         return res.status(401).json({ success: false, message: 'Authorization required' })
@@ -558,13 +560,13 @@ export default async function handler(req, res) {
     }
 
     // PUT send payment details
-    if (path.match(/^\/deposits\/[^/]+\/send-details$/) && method === 'PUT') {
+    if (path.match(/^\/api\/deposits\/[^/]+\/send-details$/) && method === 'PUT') {
       const decoded = getUserId(req)
       if (!decoded) {
         return res.status(401).json({ success: false, message: 'Authorization required' })
       }
 
-      const depositId = path.split('/')[2]
+      const depositId = path.split('/')[3]
       const { ecocashNumber, ecocashAccountName, ecocashReference } = body
 
       const { data: deposit, error } = await supabase
@@ -595,13 +597,13 @@ export default async function handler(req, res) {
     }
 
     // PUT approve deposit
-    if (path.match(/^\/deposits\/[^/]+\/approve$/) && method === 'PUT') {
+    if (path.match(/^\/api\/deposits\/[^/]+\/approve$/) && method === 'PUT') {
       const decoded = getUserId(req)
       if (!decoded) {
         return res.status(401).json({ success: false, message: 'Authorization required' })
       }
 
-      const depositId = path.split('/')[2]
+      const depositId = path.split('/')[3]
 
       const { data: deposit, error } = await supabase
         .from('deposits')
@@ -634,13 +636,13 @@ export default async function handler(req, res) {
     }
 
     // PUT reject deposit
-    if (path.match(/^\/deposits\/[^/]+\/reject$/) && method === 'PUT') {
+    if (path.match(/^\/api\/deposits\/[^/]+\/reject$/) && method === 'PUT') {
       const decoded = getUserId(req)
       if (!decoded) {
         return res.status(401).json({ success: false, message: 'Authorization required' })
       }
 
-      const depositId = path.split('/')[2]
+      const depositId = path.split('/')[3]
 
       const { data: deposit, error } = await supabase
         .from('deposits')
@@ -663,7 +665,7 @@ export default async function handler(req, res) {
     }
 
     // Admin: GET deposits
-    if (path === '/admin/deposits' && method === 'GET') {
+    if (path === '/api/admin/deposits' && method === 'GET') {
       const { data, error } = await supabase
         .from('deposits')
         .select('*, user:users(*)')
@@ -673,7 +675,7 @@ export default async function handler(req, res) {
     }
 
     // Admin: GET investments
-    if (path === '/admin/investments' && method === 'GET') {
+    if (path === '/api/admin/investments' && method === 'GET') {
       const { data, error } = await supabase
         .from('investments')
         .select('*, user:users(*), plan:investment_plans(*)')
@@ -683,7 +685,7 @@ export default async function handler(req, res) {
     }
 
     // Admin: GET dashboard stats
-    if (path === '/admin/dashboard' && method === 'GET') {
+    if (path === '/api/admin/dashboard' && method === 'GET') {
       const [usersRes, investmentsRes, depositsRes, withdrawalsRes] = await Promise.all([
         supabase.from('users').select('id', { count: 'exact' }),
         supabase.from('investments').select('id', { count: 'exact' }),
@@ -707,8 +709,8 @@ export default async function handler(req, res) {
     }
 
     // Admin: PUT approve user
-    if (path.match(/^\/admin\/users\/[^/]+\/approve$/) && method === 'PUT') {
-      const userId = path.split('/')[3]
+    if (path.match(/^\/api\/admin\/users\/[^/]+\/approve$/) && method === 'PUT') {
+      const userId = path.split('/')[4]
       
       const { data: user, error } = await supabase
         .from('users')
@@ -733,8 +735,8 @@ export default async function handler(req, res) {
     }
 
     // Admin: PUT approve KYC
-    if (path.match(/^\/admin\/users\/[^/]+\/approve-kyc$/) && method === 'PUT') {
-      const userId = path.split('/')[3]
+    if (path.match(/^\/api\/admin\/users\/[^/]+\/approve-kyc$/) && method === 'PUT') {
+      const userId = path.split('/')[4]
       
       const { data: user, error } = await supabase
         .from('users')
@@ -759,8 +761,8 @@ export default async function handler(req, res) {
     }
 
     // Admin: PUT reject KYC
-    if (path.match(/^\/admin\/users\/[^/]+\/reject-kyc$/) && method === 'PUT') {
-      const userId = path.split('/')[3]
+    if (path.match(/^\/api\/admin\/users\/[^/]+\/reject-kyc$/) && method === 'PUT') {
+      const userId = path.split('/')[4]
       
       const { data: user, error } = await supabase
         .from('users')
@@ -785,7 +787,7 @@ export default async function handler(req, res) {
     }
 
     // Admin: GET users
-    if (path === '/admin/users' && method === 'GET') {
+    if (path === '/api/admin/users' && method === 'GET') {
       const { data, error } = await supabase
         .from('users')
         .select('id, email, first_name, last_name, phone, is_active, is_verified, kyc_status, created_at')
@@ -794,7 +796,8 @@ export default async function handler(req, res) {
       return res.json({ success: true, data })
     }
 
-    if (path === '/auth/register' && method === 'POST') {
+    // POST register
+    if (path === '/api/auth/register' && method === 'POST') {
       const schema = z.object({ email: z.string().email(), password: z.string().min(6), firstName: z.string().min(1), lastName: z.string().min(1) });
       const parsed = schema.parse(body);
       
@@ -829,7 +832,8 @@ export default async function handler(req, res) {
       return res.status(201).json({ success: true, message: 'Registration successful!', data: { user, token } });
     }
 
-    if (path === '/auth/login' && method === 'POST') {
+    // POST login
+    if (path === '/api/auth/login' && method === 'POST') {
       const schema = z.object({ email: z.string().email(), password: z.string().min(1) });
       const parsed = schema.parse(body);
       
