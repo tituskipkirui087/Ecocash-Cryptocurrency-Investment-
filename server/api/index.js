@@ -64,11 +64,16 @@ export default async function handler(req, res) {
 
   console.log(`[${new Date().toISOString()}] ${method} ${path}`)
 
-  if (path === '/health') {
+  if (path === '/api/health') {
     return res.json({ 
       status: 'ok', 
       timestamp: new Date().toISOString()
     });
+  }
+
+  // SSE endpoint for payment updates - Vercel doesn't support persistent connections
+  if (path === '/api/sse/payment-updates' && method === 'GET') {
+    return res.json({ success: true, message: 'SSE not supported on Vercel - use polling fallback' })
   }
 
   const getUserId = (req) => {
