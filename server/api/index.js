@@ -333,6 +333,12 @@ export default async function handler(req, res) {
     if (path === '/api/investments' && method === 'POST') {
       const decoded = getUserId(req)
       if (!decoded) return res.status(401).json({ success: false, message: 'Authorization required' })
+      
+      // Check if user is verified (KYC approved)
+      const { data: dbUser } = await supabase.from('users').select('is_verified').eq('id', decoded.id).single()
+      if (!dbUser?.is_verified) {
+        return res.status(403).json({ success: false, message: 'KYC verification required before investing' })
+      }
 
       const { amount, planId, paymentMethod } = body
       const { data: deposit, error: depositErr } = await supabase
