@@ -28,11 +28,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token')
     const storedUser = localStorage.getItem('user')
+    console.log('Auth init - token:', !!storedToken, 'user:', storedUser ? JSON.parse(storedUser) : null)
     if (storedToken && storedUser) {
       setToken(storedToken)
       setUser(JSON.parse(storedUser))
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = (newToken: string, newUser: User) => {
+    console.log('Login called with user:', newUser)
     setToken(newToken)
     setUser(newUser)
     if (typeof window !== 'undefined') {
@@ -60,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const updateUser = (updatedUser: User) => {
+    console.log('updateUser called:', updatedUser)
     setUser(updatedUser)
     if (typeof window !== 'undefined') {
       localStorage.setItem('user', JSON.stringify(updatedUser))
