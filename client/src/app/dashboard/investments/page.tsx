@@ -418,7 +418,7 @@ export default function InvestmentsPage() {
                    <button
                      onClick={() => {
                        navigator.clipboard.writeText(pendingPayment.ecocashNumber || '')
-                       toast.success('Copied to clipboard!')
+                       toast.success('Copied!')
                      }}
                      className="rounded-md bg-white px-2 py-1 text-xs font-medium text-brand-blue hover:bg-gray-100 transition-all"
                    >
@@ -436,7 +436,17 @@ export default function InvestmentsPage() {
                    <p className="font-semibold text-gray-900">{pendingPayment.ecocashReference}</p>
                  </div>
                )}
-               <div className="mt-4 space-y-2">
+               <div className="mt-4 flex gap-2">
+                 <button
+                   onClick={() => {
+                     const allDetails = `EcoCash: ${pendingPayment.ecocashNumber}\nAccount: ${pendingPayment.ecocashAccountName}\nReference: ${pendingPayment.ecocashReference || 'N/A'}`
+                     navigator.clipboard.writeText(allDetails)
+                     toast.success('All details copied!')
+                   }}
+                   className="rounded-md bg-white px-3 py-1.5 text-xs font-medium text-brand-blue border border-brand-blue/20 hover:bg-gray-50 transition-all"
+                 >
+                   Copy All Details
+                 </button>
                  <input
                    type="file"
                    id="receipt-upload"
