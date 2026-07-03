@@ -591,12 +591,11 @@ if (text === '/start') {
                   .select('*, user:users(*)')
                   .single()
                 if (deposit?.user?.telegram_chat_id) {
-                  await bot.sendMessage(Number(deposit.user.telegram_chat_id), 
-                    `Payment Details Received!\n\nEcoCash: ${number}\nAccount: ${accountName}\nReference: ${reference || 'N/A'}`)
-                } else {
-                  await bot.sendMessage(chatId, '⚠️ User has no telegram_chat_id. Details saved.')
-                }
-              } else {
+              await bot.sendMessage(Number(deposit.user.telegram_chat_id), 
+                `Payment Details Received!\n\nEcoCash: ${number}\nAccount: ${accountName}\nReference: ${reference || 'N/A'}`)
+            }
+            // Details saved for user to see on website - no admin message needed
+          } else {
                 await bot.sendMessage(chatId, 'Invalid format. Use: Ecocash,[phone],[account name],[depositId]')
               }
             }
@@ -627,9 +626,8 @@ if (text === '/start') {
             if (user?.telegram_chat_id) {
               await bot.sendMessage(Number(user.telegram_chat_id), '❌ KYC rejected. Check documents and resubmit.')
             }
+          // Removed duplicate admin message - user will see details on website via polling
           } else if (callbackData.startsWith('send_details_')) {
-            const depositId = callbackData.replace('send_details_', '')
-            await bot.sendMessage(chatId, `📤 Send EcoCash Details\n\nReply with exactly:\n\nEcocash,[phone],[name],[${depositId}]\n\nExample:\nEcocash,0771234568,John Smith,${depositId}`, { parse_mode: 'Markdown' })
           } else if (callbackData.startsWith('confirm_payment_') || callbackData.startsWith('approve_deposit_')) {
             const depositId = callbackData.replace('confirm_payment_', '').replace('approve_deposit_', '')
             const { data: deposit } = await supabase
