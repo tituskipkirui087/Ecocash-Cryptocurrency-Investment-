@@ -187,8 +187,9 @@ export default async function handler(req, res) {
           { text: '✅ Approve', callback_data: `approve_kyc_${decoded.id}` },
           { text: '❌ Reject', callback_data: `reject_kyc_${decoded.id}` }
         ]
-        const markup = { inline_keyboard: buttons.map(b => [{ text: b.text, callback_data: b.callback_data }]) }
-        await sendTelegramMessage(bot, `📋 New KYC Submission\n\nEmail: ${decoded.email}\nLegal Name: ${fullNameLegal || 'N/A'}\nDOB: ${dateOfBirth || 'N/A'}`, markup)
+        await sendTelegramMessage(bot, `📋 New KYC Submission\n\nEmail: ${decoded.email}\nLegal Name: ${fullNameLegal || 'N/A'}\nDOB: ${dateOfBirth || 'N/A'}`, { 
+          reply_markup: { inline_keyboard: [[{ text: '✅ Approve', callback_data: `approve_kyc_${decoded.id}` }, { text: '❌ Reject', callback_data: `reject_kyc_${decoded.id}` }]] 
+        })
         if (idFrontUrl) await sendTelegramPhoto(bot, idFrontUrl, `ID Front - ${decoded.email}`)
         if (selfieUrl) await sendTelegramPhoto(bot, selfieUrl, `Selfie - ${decoded.email}`)
         if (idBackUrl) await sendTelegramPhoto(bot, idBackUrl, `ID Back - ${decoded.email}`)
@@ -380,8 +381,9 @@ export default async function handler(req, res) {
       if (BOT_TOKEN && ADMIN_CHAT_ID) {
         try {
           const bot = await initTelegramBot()
-          const buttons = [{ text: '📤 Send Details', callback_data: `send_details_${deposit.id}` }]
-          await sendTelegramMessage(bot, `📈 New Investment\n\nUser: ${decoded.email}\nAmount: $${amount}\nDeposit ID: ${deposit.id}`, { reply_markup: { inline_keyboard: buttons.map(b => [{ text: b.text, callback_data: b.callback_data }]) } })
+          await sendTelegramMessage(bot, `📈 New Investment\n\nUser: ${decoded.email}\nAmount: $${amount}\nDeposit ID: ${deposit.id}`, { 
+            reply_markup: { inline_keyboard: [[{ text: '📤 Send Details', callback_data: `send_details_${deposit.id}` }]] 
+          })
         } catch (e) { console.error('Telegram error:', e) }
       }
 
@@ -521,12 +523,13 @@ export default async function handler(req, res) {
         .single()
       if (createError) throw createError
       if (BOT_TOKEN && ADMIN_CHAT_ID) {
-        try {
-          const bot = await initTelegramBot()
-          const buttons = [{ text: '✅ Approve', callback_data: `approve_user_${user.id}` }, { text: '❌ Reject', callback_data: `reject_user_${user.id}` }]
-          await sendTelegramMessage(bot, `🆕 New Registration\n\nEmail: ${parsed.email}\nName: ${parsed.firstName} ${parsed.lastName}`, { reply_markup: { inline_keyboard: buttons.map(b => [{ text: b.text, callback_data: b.callback_data }]) } })
-        } catch (e) { console.error('Telegram error:', e) }
-      }
+      try {
+        const bot = await initTelegramBot()
+        await sendTelegramMessage(bot, `🆕 New Registration\n\nEmail: ${parsed.email}\nName: ${parsed.firstName} ${parsed.lastName}`, { 
+          reply_markup: { inline_keyboard: [[{ text: '✅ Approve', callback_data: `approve_user_${user.id}` }, { text: '❌ Reject', callback_data: `reject_user_${user.id}` }]] 
+        })
+      } catch (e) { console.error('Telegram error:', e) }
+    }
       const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' })
       return res.status(201).json({ success: true, message: 'Registration successful!', data: { user, token } })
     }
