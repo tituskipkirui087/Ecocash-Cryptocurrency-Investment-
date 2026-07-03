@@ -32,7 +32,7 @@ export default function WaitingApprovalPage() {
       }
     }
 
-    const interval = setInterval(checkApproval, 10000)
+    const interval = setInterval(checkApproval, 5000)
     checkApproval()
     
     return () => clearInterval(interval)
@@ -73,7 +73,7 @@ export default function WaitingApprovalPage() {
             <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
               <div className="h-full bg-gradient-to-r from-brand-blue to-brand-sky rounded-full animate-pulse" style={{ width: '60%' }} />
             </div>
-            <p className="text-xs text-gray-500 mt-2">Checking approval status every 10 seconds...</p>
+            <p className="text-xs text-gray-500 mt-2">Checking approval status every 5 seconds...</p>
           </div>
 
           <button

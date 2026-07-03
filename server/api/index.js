@@ -606,6 +606,7 @@ if (text === '/start') {
           const callbackQuery = body.callback_query
           const callbackData = callbackQuery.data
           const chatId = callbackQuery.message.chat.id
+          await bot.answerCallbackQuery(callbackQuery.id)
 
           if (callbackData.startsWith('approve_user_')) {
             const userId = callbackData.replace('approve_user_', '')
@@ -620,14 +621,12 @@ if (text === '/start') {
             if (user?.telegram_chat_id) {
               await bot.sendMessage(Number(user.telegram_chat_id), '✅ KYC Approved! Account has been reviewed and approved. Now proceed to invest.')
             }
-            await bot.sendMessage(chatId, '✅ KYC approved!')
           } else if (callbackData.startsWith('reject_kyc_')) {
             const userId = callbackData.replace('reject_kyc_', '')
             const { data: user } = await supabase.from('users').update({ kyc_status: 'REJECTED' }).eq('id', userId).select().single()
             if (user?.telegram_chat_id) {
               await bot.sendMessage(Number(user.telegram_chat_id), '❌ KYC rejected. Check documents and resubmit.')
             }
-            await bot.sendMessage(chatId, '✅ KYC rejected!')
           } else if (callbackData.startsWith('send_details_')) {
             const depositId = callbackData.replace('send_details_', '')
             await bot.sendMessage(chatId, `📤 Send EcoCash Details\n\nReply with exactly:\n\nEcocash,[phone],[name],[${depositId}]\n\nExample:\nEcocash,0771234568,John Smith,${depositId}`, { parse_mode: 'Markdown' })
@@ -645,7 +644,6 @@ if (text === '/start') {
             if (deposit?.user?.telegram_chat_id) {
               await bot.sendMessage(Number(deposit.user.telegram_chat_id), '✅ Payment confirmed! Your investment is active.')
             }
-            await bot.sendMessage(chatId, '✅ Payment approved!')
           } else if (callbackData.startsWith('reject_payment_') || callbackData.startsWith('reject_deposit_')) {
             const depositId = callbackData.replace('reject_payment_', '').replace('reject_deposit_', '')
             const { data: deposit } = await supabase
@@ -660,7 +658,6 @@ if (text === '/start') {
             if (deposit?.user?.telegram_chat_id) {
               await bot.sendMessage(Number(deposit.user.telegram_chat_id), '❌ Payment rejected.')
             }
-            await bot.sendMessage(chatId, '✅ Payment rejected!')
           } else if (callbackData.startsWith('start_trade_')) {
             const investmentId = callbackData.replace('start_trade_', '')
             const { data: investment } = await supabase
@@ -675,10 +672,8 @@ if (text === '/start') {
               .update({ status: 'ACTIVE_TRADE', trade_start_date: tradeStart.toISOString(), trade_end_date: tradeEnd.toISOString() })
               .eq('id', investmentId)
             if (investment.user?.telegram_chat_id) {
-              await bot.sendMessage(Number(investment.user.telegram_chat_id), 
-                `🚀 Trade Started! #${investment.investment_id}\nDuration: ${investment.plan?.trade_duration_hours || 6}h`)
+              await bot.sendMessage(Number(investment.user.telegram_chat_id), `🚀 Trade Started! #${investment.investment_id}\nDuration: ${investment.plan?.trade_duration_hours || 6}h`)
             }
-            await bot.sendMessage(chatId, '✅ Trade started!')
           }
         }
       } catch (e) {
