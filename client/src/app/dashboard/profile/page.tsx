@@ -16,15 +16,10 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [showKycConfirmed, setShowKycConfirmed] = useState(false)
+  const [initialized, setInitialized] = useState(false)
 
-  // Fetch profile on mount to get latest data from server
   useEffect(() => {
-    fetchProfile()
-  }, [])
-
-  // Update form when user data loads
-  useEffect(() => {
-    if (user) {
+    if (user && !initialized) {
       setFormData({
         firstName: user.firstName || '',
         lastName: user.lastName || '',
@@ -33,21 +28,21 @@ export default function ProfilePage() {
       if (user.avatar) {
         setAvatarPreview(user.avatar)
       }
+      setInitialized(true)
     }
-    // If no user in state but we have token, try to fetch profile
+  }, [user, initialized])
+
+  useEffect(() => {
     if (!user && typeof window !== 'undefined' && localStorage.getItem('token')) {
       fetchProfile()
     }
-  }, [user])
+  }, [])
 
   const fetchProfile = async () => {
     try {
-      const { data } = await api.get('auth/profile')
-      // API wraps response: { success: true, data: { first_name, ... } }
-      const userData = data.data || data
-      // Map snake_case from API to camelCase for frontend
+      const response = await api.get('auth/profile')
+      const userData = response.data.data || response.data
       updateUser({
-        ...user,
         id: userData.id,
         email: userData.email,
         firstName: userData.first_name || '',
@@ -90,7 +85,7 @@ export default function ProfilePage() {
       const form = new FormData()
       form.append('avatar', file)
       
-      const res = await api.post('/auth/avatar', form)
+      const res = await api.post('auth/avatar', form)
       
       if (res.data?.avatar) {
         updateUser({ ...user, avatar: res.data.avatar } as any)
@@ -99,7 +94,8 @@ export default function ProfilePage() {
       toast.success('Profile image updated')
     } catch (err: any) {
       console.error('Avatar upload error:', err)
-      toast.error(err.response?.data?.message || err.message || 'Failed to upload image')
+      const msg = err.response?.data?.message || err.message || 'Failed to upload image'
+      toast.error(msg)
     }
   }
 
@@ -107,8 +103,9 @@ export default function ProfilePage() {
     e.preventDefault()
     setLoading(true)
     try {
-      const { data } = await api.put('/auth/profile', formData)
-      updateUser({ ...user, ...data, firstName: data.first_name, lastName: data.last_name } as any)
+      const response = await api.put('auth/profile', formData)
+      const userData = response.data.data || response.data
+      updateUser({ ...user, ...userData, firstName: userData.first_name, lastName: userData.last_name } as any)
       toast.success('Profile updated successfully')
     } catch (err: any) {
       toast.error(err.response?.data?.message || err.message || 'Failed to update profile')
