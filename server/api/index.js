@@ -596,9 +596,9 @@ if (text === '/start') {
             await bot.sendMessage(chatId, '✅ User activated!')
           } else if (callbackData.startsWith('approve_kyc_')) {
             const userId = callbackData.replace('approve_kyc_', '')
-            const { data: user } = await supabase.from('users').update({ kyc_status: 'APPROVED', is_verified: true }).eq('id', userId).select().single()
+            const { data: user } = await supabase.from('users').update({ kyc_status: 'APPROVED', is_verified: true, is_active: true }).eq('id', userId).select().single()
             if (user?.telegram_chat_id) {
-              await bot.sendMessage(Number(user.telegram_chat_id), '✅ KYC Approved! You can now invest.')
+              await bot.sendMessage(Number(user.telegram_chat_id), '✅ KYC Approved! Account has been reviewed and approved. Now proceed to invest.')
             }
             await bot.sendMessage(chatId, '✅ KYC approved!')
           } else if (callbackData.startsWith('reject_kyc_')) {

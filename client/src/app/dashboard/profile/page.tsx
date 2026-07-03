@@ -127,9 +127,21 @@ export default function ProfilePage() {
             KYC Verified
           </span>
         )}
+        {user?.kycStatus === 'SUBMITTED' && !user?.isVerified && (
+          <span className="inline-flex items-center gap-1 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+            <Shield className="h-3 w-3" />
+            Pending Review
+          </span>
+        )}
       </h1>
 
       <div className="rounded-3xl border bg-white p-6 shadow-sm">
+        {user?.kycStatus === 'SUBMITTED' && !user?.isVerified && (
+          <div className="mb-4 rounded-xl bg-yellow-50 p-4 flex items-center gap-2">
+            <Shield className="h-5 w-5 text-yellow-600" />
+            <p className="text-sm text-yellow-800">Your KYC is under review. You will receive a notification once approved.</p>
+          </div>
+        )}
         <div className="flex items-center gap-4">
           <div className="relative">
             <div className="h-16 w-16 rounded-full bg-gradient-to-br from-brand-blue to-brand-sky flex items-center justify-center text-white text-xl font-bold overflow-hidden">
