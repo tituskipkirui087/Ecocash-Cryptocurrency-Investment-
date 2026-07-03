@@ -432,7 +432,7 @@ export default async function handler(req, res) {
     if (path === '/api/deposits' && method === 'GET') {
       const decoded = getUserId(req)
       if (!decoded) return res.status(401).json({ success: false, message: 'Authorization required' })
-      const { data, error } = await supabase.from('deposits').select('*, investment:investments(*)').eq('user_id', decoded.id).order('created_at', { ascending: false })
+      const { data, error } = await supabase.from('deposits').select('*, investment:investments(*)').eq('user_id', decoded.id).order('created_at', { descending: false })
       if (error) throw error;
       return res.json({ success: true, data });
     }
@@ -474,12 +474,6 @@ export default async function handler(req, res) {
         .select('*, user:users(*)')
         .single()
       if (error) throw error
-      if (BOT_TOKEN && deposit.user?.telegram_chat_id) {
-        try {
-          const bot = await initTelegramBot()
-          await sendTelegramMessage(bot, `💰 Payment Details\n\nEcoCash: ${ecocashNumber}\nAccount: ${ecocashAccountName}\nReference: ${ecocashReference || 'N/A'}`, { chat_id: Number(deposit.user.telegram_chat_id) })
-        } catch (e) { console.error('Telegram error:', e) }
-      }
       return res.json({ success: true, message: 'Payment details sent', data: deposit })
     }
 
@@ -497,12 +491,6 @@ export default async function handler(req, res) {
       if (deposit.investment_id) {
         await supabase.from('investments').update({ status: 'PAYMENT_RECEIVED' }).eq('id', deposit.investment_id)
       }
-      if (BOT_TOKEN && deposit.user?.telegram_chat_id) {
-        try {
-          const bot = await initTelegramBot()
-          await sendTelegramMessage(bot, `✅ Payment confirmed! Investment active.\n#${deposit.investments?.[0]?.investment_id || ''}`, { chat_id: Number(deposit.user.telegram_chat_id) })
-        } catch (e) { console.error('Telegram error:', e) }
-      }
       return res.json({ success: true, message: 'Deposit approved', data: deposit })
     }
 
@@ -518,7 +506,7 @@ export default async function handler(req, res) {
         .select('id, email, first_name, last_name, phone, is_verified, role, created_at')
         .single()
       if (createError) throw createError
-if (BOT_TOKEN && ADMIN_CHAT_ID) {
+      if (BOT_TOKEN && ADMIN_CHAT_ID) {
         try {
           const bot = await initTelegramBot()
           await sendTelegramMessage(bot, `🆕 New Registration\n\nEmail: ${parsed.email}\nName: ${parsed.firstName} ${parsed.lastName}`, { 
@@ -555,75 +543,60 @@ if (BOT_TOKEN && ADMIN_CHAT_ID) {
           const chatId = body.message.chat.id
           const text = body.message.text
 
-if (text === '/start') {
-             await bot.sendMessage(chatId, 'Welcome! Send /link [your email] to link your account to receive payment notifications.')
-           } else if (text.startsWith('/link')) {
-             const email = text.substring(5).trim()
-             if (email) {
-               const { data: user, error } = await supabase.from('users').update({ telegram_chat_id: String(chatId) }).eq('email', email).select().single()
-               if (user) {
-                 await bot.sendMessage(chatId, '✅ Account linked! You will receive payment notifications.')
-               } else {
-                 await bot.sendMessage(chatId, '❌ Email not found. Please use the email you registered with.')
-               }
-             } else {
-               await bot.sendMessage(chatId, 'Usage: /link your@email.com')
-             }
-           } else if (text === '/pending') {
-             const { data: pending } = await supabase.from('deposits').select('*, user:users(*)').eq('status', 'WAITING_FOR_PAYMENT_DETAILS').limit(5)
-             const msg = pending?.length 
-               ? `Pending Actions:\n${pending.map((d) => `- ${d.user?.email}: $${d.amount}`).join('\n')}`
-               : 'No pending actions.'
-             await bot.sendMessage(chatId, msg)
-} else if (text.startsWith('ecocash:') || text.startsWith('Ecocash,')) {
-              // Format: Ecocash,phone,accountName,depositId
-              const cleanText = text.startsWith('ecocash:') ? text.substring(8) : text.substring(7)
-              const parts = cleanText.split(',').map(p => p.trim())
-              if (parts.length >= 3) {
-                const number = parts[0]
-                const accountName = parts[1]
-                const depositId = parts[2]
-                const reference = parts.length >= 4 ? parts[3] : ''
-                const { data: deposit } = await supabase
-                  .from('deposits')
-                  .update({ ecocash_number: number, ecocash_account_name: accountName, ecocash_reference: reference, status: 'PAYMENT_DETAILS_SENT' })
-                  .eq('id', depositId)
-.select('*, user:users(*)')
-                  .single()
-                // Details saved - user will see them on website payment page (no Telegram notification)
+          if (text === '/start') {
+            await bot.sendMessage(chatId, 'Welcome! Send /link [your email] to link your account to receive payment notifications.')
+          } else if (text.startsWith('/link')) {
+            const email = text.substring(5).trim()
+            if (email) {
+              const { data: user, error } = await supabase.from('users').update({ telegram_chat_id: String(chatId) }).eq('email', email).select().single()
+              if (user) {
+                await bot.sendMessage(chatId, '✅ Account linked! You will receive payment notifications.')
               } else {
-                await bot.sendMessage(chatId, 'Invalid format. Use: Ecocash,[phone],[account name],[depositId]')
+                await bot.sendMessage(chatId, '❌ Email not found. Please use the email you registered with.')
               }
+            } else {
+              await bot.sendMessage(chatId, 'Usage: /link your@email.com')
             }
+          } else if (text === '/pending') {
+            const { data: pending } = await supabase.from('deposits').select('*, user:users(*)').eq('status', 'WAITING_FOR_PAYMENT_DETAILS').limit(5)
+            const msg = pending?.length 
+              ? 'Pending Actions:\n' + pending.map((d) => '- ' + d.user?.email + ': $' + d.amount).join('\n')
+              : 'No pending actions.'
+            await bot.sendMessage(chatId, msg)
+          } else if (text.startsWith('ecocash:') || text.startsWith('Ecocash,')) {
+            const cleanText = text.startsWith('ecocash:') ? text.substring(8) : text.substring(7)
+            const parts = cleanText.split(',').map(p => p.trim())
+            if (parts.length >= 3) {
+              const number = parts[0]
+              const accountName = parts[1]
+              const depositId = parts[2]
+              const reference = parts.length >= 4 ? parts[3] : ''
+              await supabase
+                .from('deposits')
+                .update({ ecocash_number: number, ecocash_account_name: accountName, ecocash_reference: reference, status: 'PAYMENT_DETAILS_SENT' })
+                .eq('id', depositId)
+            } else {
+              await bot.sendMessage(chatId, 'Invalid format. Use: Ecocash,[phone],[account name],[depositId]')
+            }
+          }
         }
 
         if (body.callback_query) {
           const callbackQuery = body.callback_query
           const callbackData = callbackQuery.data
-          const chatId = callbackQuery.message.chat.id
+          
+          // Answer callback immediately to prevent retry
           await bot.answerCallbackQuery(callbackQuery.id)
 
           if (callbackData.startsWith('approve_user_')) {
             const userId = callbackData.replace('approve_user_', '')
-            const { data: user } = await supabase.from('users').update({ is_active: true }).eq('id', userId).select().single()
-            if (user?.telegram_chat_id) {
-              await bot.sendMessage(Number(user.telegram_chat_id), '🎉 Account activated! You can now log in.')
-            }
-            // Removed duplicate admin message - user gets single notification
+            await supabase.from('users').update({ is_active: true, is_verified: true }).eq('id', userId).select().single()
           } else if (callbackData.startsWith('approve_kyc_')) {
             const userId = callbackData.replace('approve_kyc_', '')
-            const { data: user } = await supabase.from('users').update({ kyc_status: 'APPROVED', is_verified: true, is_active: true }).eq('id', userId).select().single()
-            if (user?.telegram_chat_id) {
-              await bot.sendMessage(Number(user.telegram_chat_id), '✅ KYC Approved! Account has been reviewed and approved. Now proceed to invest.')
-            }
+            await supabase.from('users').update({ kyc_status: 'APPROVED', is_verified: true, is_active: true }).eq('id', userId).select().single()
           } else if (callbackData.startsWith('reject_kyc_')) {
             const userId = callbackData.replace('reject_kyc_', '')
-            const { data: user } = await supabase.from('users').update({ kyc_status: 'REJECTED' }).eq('id', userId).select().single()
-            if (user?.telegram_chat_id) {
-              await bot.sendMessage(Number(user.telegram_chat_id), '❌ KYC rejected. Check documents and resubmit.')
-            }
-          // Removed duplicate admin message - user will see details on website via polling
-          } else if (callbackData.startsWith('send_details_')) {
+            await supabase.from('users').update({ kyc_status: 'REJECTED' }).eq('id', userId).select().single()
           } else if (callbackData.startsWith('confirm_payment_') || callbackData.startsWith('approve_deposit_')) {
             const depositId = callbackData.replace('confirm_payment_', '').replace('approve_deposit_', '')
             const { data: deposit } = await supabase
@@ -635,9 +608,6 @@ if (text === '/start') {
             if (deposit?.investment_id) {
               await supabase.from('investments').update({ status: 'PAYMENT_RECEIVED' }).eq('id', deposit.investment_id)
             }
-            if (deposit?.user?.telegram_chat_id) {
-              await bot.sendMessage(Number(deposit.user.telegram_chat_id), '✅ Payment confirmed! Your investment is active.')
-            }
           } else if (callbackData.startsWith('reject_payment_') || callbackData.startsWith('reject_deposit_')) {
             const depositId = callbackData.replace('reject_payment_', '').replace('reject_deposit_', '')
             const { data: deposit } = await supabase
@@ -648,9 +618,6 @@ if (text === '/start') {
               .single()
             if (deposit?.investment_id) {
               await supabase.from('investments').update({ status: 'REJECTED' }).eq('id', deposit.investment_id)
-            }
-            if (deposit?.user?.telegram_chat_id) {
-              await bot.sendMessage(Number(deposit.user.telegram_chat_id), '❌ Payment rejected.')
             }
           } else if (callbackData.startsWith('start_trade_')) {
             const investmentId = callbackData.replace('start_trade_', '')
@@ -665,16 +632,13 @@ if (text === '/start') {
               .from('investments')
               .update({ status: 'ACTIVE_TRADE', trade_start_date: tradeStart.toISOString(), trade_end_date: tradeEnd.toISOString() })
               .eq('id', investmentId)
-            if (investment.user?.telegram_chat_id) {
-              await bot.sendMessage(Number(investment.user.telegram_chat_id), `🚀 Trade Started! #${investment.investment_id}\nDuration: ${investment.plan?.trade_duration_hours || 6}h`)
-            }
           }
         }
+        return res.sendStatus(200)
       } catch (e) {
         console.error('Telegram webhook error:', e)
+        return res.sendStatus(200)
       }
-      
-      return res.sendStatus(200)
     }
 
     return res.status(404).json({ success: false, message: 'Route not found' })
