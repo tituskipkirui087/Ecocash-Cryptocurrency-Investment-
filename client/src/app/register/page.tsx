@@ -41,8 +41,8 @@ export default function RegisterPage() {
         lastName: data.data.user.last_name,
         phone: data.data.user.phone,
       }))
-      toast.success('Account created! Please check your email and wait for approval.')
-      router.push('/login?message=Your account is pending approval. You will be notified once verified.')
+      toast.success('Registration successful! Please complete KYC verification.')
+      router.push('/kyc')
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed')
     } finally {

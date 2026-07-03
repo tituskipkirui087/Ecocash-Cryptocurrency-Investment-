@@ -441,7 +441,7 @@ export default async function handler(req, res) {
       const decoded = getUserId(req)
       if (!decoded) return res.status(401).json({ success: false, message: 'Authorization required' })
       const { data, error } = await supabase.from('users')
-        .select('id, email, first_name, last_name, phone, avatar, is_verified, role, kyc_status')
+        .select('id, email, first_name, last_name, phone, avatar, is_verified, is_active, role, kyc_status')
         .eq('id', decoded.id)
         .single()
       if (error) throw error;

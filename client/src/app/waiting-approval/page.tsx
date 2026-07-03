@@ -21,10 +21,12 @@ export default function WaitingApprovalPage() {
         const { data } = await api.get('auth/profile')
         const user = data.data
         if (user.is_verified && user.is_active) {
-          router.push('/dashboard')
+          localStorage.removeItem('token')
+          router.push(`/login?email=${encodeURIComponent(user.email || '')}&message=Your account has been approved! Please log in.`)}
         }
       } catch (err) {
         console.error('Check approval error:', err)
+        router.push('/login')
       } finally {
         setChecking(false)
       }
