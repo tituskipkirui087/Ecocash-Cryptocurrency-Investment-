@@ -102,7 +102,12 @@ export default function InvestmentsPage() {
       setView('pending')
       fetchInvestments()
     } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || 'Failed')
+      const msg = err.response?.data?.message || err.message || 'Failed'
+      if (err.response?.status === 403 && msg.includes('KYC')) {
+        toast.error('Please complete KYC verification before investing')
+      } else {
+        toast.error(msg)
+      }
     }
   }
 
