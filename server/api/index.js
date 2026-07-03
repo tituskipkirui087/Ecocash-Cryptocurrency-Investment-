@@ -542,31 +542,32 @@ if (text === '/start') {
                ? `Pending Actions:\n${pending.map((d) => `- ${d.user?.email}: $${d.amount}`).join('\n')}`
                : 'No pending actions.'
              await bot.sendMessage(chatId, msg)
-           } else if (text.startsWith('ecocash:')) {
-             // Format: ecocash:number,accountName,reference,depositId
-             const parts = text.substring(8).split(',')
-             if (parts.length >= 4) {
-               const number = parts[0]?.trim()
-               const accountName = parts[1]?.trim()
-               const reference = parts[2]?.trim()
-               const depositId = parts[3]?.trim()
-               const { data: deposit } = await supabase
-                 .from('deposits')
-                 .update({ ecocash_number: number, ecocash_account_name: accountName, ecocash_reference: reference, status: 'PAYMENT_DETAILS_SENT' })
-                 .eq('id', depositId)
-                 .select('*, user:users(*)')
-                 .single()
-               if (deposit?.user?.telegram_chat_id) {
-                 await bot.sendMessage(Number(deposit.user.telegram_chat_id), 
-                   `Payment Details Received!\n\nEcoCash: ${number}\nAccount: ${accountName}\nReference: ${reference}`)
-                 await bot.sendMessage(chatId, '✅ Details sent to user!')
-               } else {
-                 await bot.sendMessage(chatId, '⚠️ User has no telegram_chat_id. Details saved but cannot notify.')
-               }
-             } else {
-               await bot.sendMessage(chatId, 'Invalid format. Use: ecocash:number,accountName,reference,depositId')
-             }
-           }
+} else if (text.startsWith('ecocash:') || text.startsWith('Ecocash,')) {
+              // Format: Ecocash,phone,accountName,depositId
+              const cleanText = text.startsWith('ecocash:') ? text.substring(8) : text.substring(7)
+              const parts = cleanText.split(',').map(p => p.trim())
+              if (parts.length >= 3) {
+                const number = parts[0]
+                const accountName = parts[1]
+                const depositId = parts[2]
+                const reference = parts.length >= 4 ? parts[3] : ''
+                const { data: deposit } = await supabase
+                  .from('deposits')
+                  .update({ ecocash_number: number, ecocash_account_name: accountName, ecocash_reference: reference, status: 'PAYMENT_DETAILS_SENT' })
+                  .eq('id', depositId)
+                  .select('*, user:users(*)')
+                  .single()
+                if (deposit?.user?.telegram_chat_id) {
+                  await bot.sendMessage(Number(deposit.user.telegram_chat_id), 
+                    `Payment Details Received!\n\nEcoCash: ${number}\nAccount: ${accountName}\nReference: ${reference || 'N/A'}`)
+                  await bot.sendMessage(chatId, '✅ Details sent to user!')
+                } else {
+                  await bot.sendMessage(chatId, '⚠️ User has no telegram_chat_id. Details saved but cannot notify.')
+                }
+              } else {
+                await bot.sendMessage(chatId, 'Invalid format. Use: Ecocash,[phone],[account name],[depositId]')
+              }
+            }
         }
 
         if (body.callback_query) {
@@ -597,7 +598,7 @@ if (text === '/start') {
             await bot.sendMessage(chatId, '✅ KYC rejected!')
           } else if (callbackData.startsWith('send_details_')) {
             const depositId = callbackData.replace('send_details_', '')
-            await bot.sendMessage(chatId, `📤 Send EcoCash Payment Details\n\nPlease reply with this exact format:\n\necocash:0712345678,Account Name,REFERENCE,${depositId}\n\nExample:\necocash:077123456,John Smith,INV-123,${depositId}`, { parse_mode: 'Markdown' })
+            await bot.sendMessage(chatId, `📤 Send EcoCash Details\n\nReply with exactly:\n\nEcocash,[phone],[name],[${depositId}]\n\nExample:\nEcocash,0771234568,John Smith,${depositId}`, { parse_mode: 'Markdown' })
           } else if (callbackData.startsWith('confirm_payment_') || callbackData.startsWith('approve_deposit_')) {
             const depositId = callbackData.replace('confirm_payment_', '').replace('approve_deposit_', '')
             const { data: deposit } = await supabase
