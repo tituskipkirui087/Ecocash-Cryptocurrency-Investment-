@@ -32,7 +32,15 @@ export default function RegisterPage() {
 
     try {
       const { data } = await api.post('auth/register', formData)
-      login(data.data.token, data.data.user)
+      const userData = data.data.user
+      const mappedUser = {
+        ...userData,
+        firstName: userData.first_name,
+        lastName: userData.last_name,
+        phone: userData.phone,
+        kycStatus: userData.kyc_status,
+      }
+      login(data.data.token, mappedUser)
       router.push('/kyc')
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed')

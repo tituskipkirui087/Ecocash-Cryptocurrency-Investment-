@@ -409,61 +409,72 @@ export default function InvestmentsPage() {
           
           <p className="text-sm text-gray-600">Your investment request has been submitted. Payment details will be sent shortly.</p>
           
-          {pendingPayment.ecocashNumber && (
-            <div className="rounded-xl bg-green-50 p-4 mt-4 space-y-2">
-              <div>
-                <span className="text-xs text-gray-600">EcoCash Number:</span>
-                <p className="font-mono font-semibold text-gray-900">{pendingPayment.ecocashNumber}</p>
-              </div>
-              <div>
-                <span className="text-xs text-gray-600">Account Name:</span>
-                <p className="font-semibold text-gray-900">{pendingPayment.ecocashAccountName}</p>
-              </div>
-              {pendingPayment.ecocashReference && (
-                <div>
-                  <span className="text-xs text-gray-600">Reference:</span>
-                  <p className="font-semibold text-gray-900">{pendingPayment.ecocashReference}</p>
-                </div>
-              )}
-              <div className="mt-4 space-y-2">
-                <input
-                  type="file"
-                  id="receipt-upload"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0]
-                    if (file) {
-                      const form = new FormData()
-                      form.append('receipt', file)
-                      try {
-                        await api.post(`deposits/${pendingPayment.depositId}/upload-receipt`, form)
-                        toast.success('Payment proof submitted!')
-                        setView('packages')
-                        fetchInvestments()
-                      } catch (err: any) {
-                        console.error('Upload error:', err)
-                        toast.error(err.response?.data?.message || 'Failed to upload proof')
-                      }
-                    }
-                  }}
-                />
-                <label
-                  htmlFor="receipt-upload"
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-blue to-brand-sky px-4 py-2 text-sm font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90 cursor-pointer transition-all"
-                >
-                  Have you paid? &gt; Upload Payment Proof
-                </label>
-                <button
-                  onClick={() => setView('packages')}
-                  className="ml-2 rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-all"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
+{pendingPayment.ecocashNumber && (
+             <div className="rounded-xl bg-green-50 p-4 mt-4 space-y-2">
+               <div>
+                 <span className="text-xs text-gray-600">EcoCash Number:</span>
+                 <div className="flex items-center gap-2">
+                   <p className="font-mono font-semibold text-gray-900">{pendingPayment.ecocashNumber}</p>
+                   <button
+                     onClick={() => {
+                       navigator.clipboard.writeText(pendingPayment.ecocashNumber || '')
+                       toast.success('Copied to clipboard!')
+                     }}
+                     className="rounded-md bg-white px-2 py-1 text-xs font-medium text-brand-blue hover:bg-gray-100 transition-all"
+                   >
+                     Copy
+                   </button>
+                 </div>
+               </div>
+               <div>
+                 <span className="text-xs text-gray-600">Account Name:</span>
+                 <p className="font-semibold text-gray-900">{pendingPayment.ecocashAccountName}</p>
+               </div>
+               {pendingPayment.ecocashReference && (
+                 <div>
+                   <span className="text-xs text-gray-600">Reference:</span>
+                   <p className="font-semibold text-gray-900">{pendingPayment.ecocashReference}</p>
+                 </div>
+               )}
+               <div className="mt-4 space-y-2">
+                 <input
+                   type="file"
+                   id="receipt-upload"
+                   accept="image/*"
+                   capture="environment"
+                   className="hidden"
+                   onChange={async (e) => {
+                     const file = e.target.files?.[0]
+                     if (file) {
+                       const form = new FormData()
+                       form.append('receipt', file)
+                       try {
+                         await api.post(`deposits/${pendingPayment.depositId}/upload-receipt`, form)
+                         toast.success('Payment proof submitted!')
+                         setView('packages')
+                         fetchInvestments()
+                       } catch (err: any) {
+                         console.error('Upload error:', err)
+                         toast.error(err.response?.data?.message || 'Failed to upload proof')
+                       }
+                     }
+                   }}
+                 />
+                 <label
+                   htmlFor="receipt-upload"
+                   className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-blue to-brand-sky px-4 py-2 text-sm font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90 cursor-pointer transition-all"
+                 >
+                   Have you paid? &gt; Upload Payment Proof
+                 </label>
+                 <button
+                   onClick={() => setView('packages')}
+                   className="ml-2 rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-all"
+                 >
+                   Cancel
+                 </button>
+               </div>
+             </div>
+           )}
           
           {!pendingPayment.ecocashNumber && (
             <div className="rounded-xl bg-yellow-50 p-4 mt-4">

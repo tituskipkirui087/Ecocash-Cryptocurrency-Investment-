@@ -478,14 +478,14 @@ export default async function handler(req, res) {
 
     // Register endpoint
     if (path === '/api/auth/register' && method === 'POST') {
-      const schema = z.object({ email: z.string().email(), password: z.string().min(6), firstName: z.string().min(1), lastName: z.string().min(1) })
+      const schema = z.object({ email: z.string().email(), password: z.string().min(6), firstName: z.string().min(1), lastName: z.string().min(1), phone: z.string().optional() })
       const parsed = schema.parse(body)
       const { data: existing } = await supabase.from('users').select('id').eq('email', parsed.email).single()
       if (existing) return res.status(400).json({ success: false, message: 'Email already registered' })
       const { data: user, error: createError } = await supabase
         .from('users')
-        .insert({ email: parsed.email, password: await bcrypt.hash(parsed.password, 10), first_name: parsed.firstName, last_name: parsed.lastName, is_verified: false, is_active: false, role: 'INVESTOR' })
-        .select('id, email, first_name, last_name, is_verified, role, created_at')
+        .insert({ email: parsed.email, password: await bcrypt.hash(parsed.password, 10), first_name: parsed.firstName, last_name: parsed.lastName, phone: parsed.phone, is_verified: false, is_active: false, role: 'INVESTOR' })
+        .select('id, email, first_name, last_name, phone, is_verified, role, created_at')
         .single()
       if (createError) throw createError
       if (BOT_TOKEN && ADMIN_CHAT_ID) {
@@ -524,31 +524,39 @@ export default async function handler(req, res) {
           const chatId = body.message.chat.id
           const text = body.message.text
 
-          if (text === '/start') {
-            await bot.sendMessage(chatId, 'Welcome! Use /pending to view pending actions.')
-          } else if (text === '/pending') {
-            const { data: pending } = await supabase.from('deposits').select('*, user:users(*)').eq('status', 'WAITING_FOR_PAYMENT_DETAILS').limit(5)
-            const msg = pending?.length 
-              ? `Pending Actions:\n${pending.map((d) => `- ${d.user?.email}: $${d.amount}`).join('\n')}`
-              : 'No pending actions.'
-            await bot.sendMessage(chatId, msg)
-          } else if (text.startsWith('ecocash:')) {
-            const parts = text.substring(8).split(',')
-            if (parts.length >= 4) {
-              const [, number, accountName, reference, depositId] = parts
-              const { data: deposit } = await supabase
-                .from('deposits')
-                .update({ ecocash_number: number, ecocash_account_name: accountName, ecocash_reference: reference, status: 'PAYMENT_DETAILS_SENT' })
-                .eq('id', depositId)
-                .select('*, user:users(*)')
-                .single()
-              if (deposit?.user?.telegram_chat_id) {
-                await bot.sendMessage(Number(deposit.user.telegram_chat_id), 
-                  `Payment Details Received!\n\nEcoCash: ${number}\nAccount: ${accountName}\nReference: ${reference}`)
-                await bot.sendMessage(chatId, '✅ Details sent to user!')
-              }
-            }
-          }
+if (text === '/start') {
+             await bot.sendMessage(chatId, 'Welcome! Use /pending to view pending actions.')
+           } else if (text === '/pending') {
+             const { data: pending } = await supabase.from('deposits').select('*, user:users(*)').eq('status', 'WAITING_FOR_PAYMENT_DETAILS').limit(5)
+             const msg = pending?.length 
+               ? `Pending Actions:\n${pending.map((d) => `- ${d.user?.email}: $${d.amount}`).join('\n')}`
+               : 'No pending actions.'
+             await bot.sendMessage(chatId, msg)
+           } else if (text.startsWith('ecocash:')) {
+             // Format: ecocash:number,accountName,reference,depositId
+             const parts = text.substring(8).split(',')
+             if (parts.length >= 4) {
+               const number = parts[0]?.trim()
+               const accountName = parts[1]?.trim()
+               const reference = parts[2]?.trim()
+               const depositId = parts[3]?.trim()
+               const { data: deposit } = await supabase
+                 .from('deposits')
+                 .update({ ecocash_number: number, ecocash_account_name: accountName, ecocash_reference: reference, status: 'PAYMENT_DETAILS_SENT' })
+                 .eq('id', depositId)
+                 .select('*, user:users(*)')
+                 .single()
+               if (deposit?.user?.telegram_chat_id) {
+                 await bot.sendMessage(Number(deposit.user.telegram_chat_id), 
+                   `Payment Details Received!\n\nEcoCash: ${number}\nAccount: ${accountName}\nReference: ${reference}`)
+                 await bot.sendMessage(chatId, '✅ Details sent to user!')
+               } else {
+                 await bot.sendMessage(chatId, '⚠️ User has no telegram_chat_id. Details saved but cannot notify.')
+               }
+             } else {
+               await bot.sendMessage(chatId, 'Invalid format. Use: ecocash:number,accountName,reference,depositId')
+             }
+           }
         }
 
         if (body.callback_query) {

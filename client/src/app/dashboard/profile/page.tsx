@@ -17,6 +17,12 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [showKycConfirmed, setShowKycConfirmed] = useState(false)
 
+  // Fetch profile on mount to get latest data from server
+  useEffect(() => {
+    fetchProfile()
+  }, [])
+
+  // Update form when user data loads
   useEffect(() => {
     if (user) {
       setFormData({
@@ -28,20 +34,29 @@ export default function ProfilePage() {
         setAvatarPreview(user.avatar)
       }
     }
-    // Also fetch profile on mount to get latest data
-    fetchProfile()
+    // If no user in state but we have token, try to fetch profile
+    if (!user && typeof window !== 'undefined' && localStorage.getItem('token')) {
+      fetchProfile()
+    }
   }, [user])
 
   const fetchProfile = async () => {
     try {
       const { data } = await api.get('auth/profile')
+      // API wraps response: { success: true, data: { first_name, ... } }
+      const userData = data.data || data
+      // Map snake_case from API to camelCase for frontend
       updateUser({
         ...user,
-        ...data,
-        firstName: data.first_name,
-        lastName: data.last_name,
-        kycStatus: data.kyc_status,
-        phone: data.phone,
+        id: userData.id,
+        email: userData.email,
+        firstName: userData.first_name || '',
+        lastName: userData.last_name || '',
+        phone: userData.phone || '',
+        avatar: userData.avatar,
+        isVerified: userData.is_verified,
+        role: userData.role,
+        kycStatus: userData.kyc_status,
       } as any)
     } catch (err) {
       console.error('Failed to fetch profile:', err)
@@ -51,7 +66,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user?.isVerified && !showKycConfirmed) {
       setShowKycConfirmed(true)
-      toast.success('🎉 KYC Verified! Your account is now fully activated.', {
+      toast.success('KYC Verified! Your account is now fully activated.', {
         duration: 5000,
         position: 'top-center',
       })
