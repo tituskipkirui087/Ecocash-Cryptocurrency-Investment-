@@ -131,18 +131,25 @@ export default async function handler(req, res) {
     try {
       if (supabase) {
         const timestamp = Date.now()
-        const frontKey = `kyc/front-${timestamp}-${decoded.id}.${idDocumentFront.filename?.split('.').pop() || 'jpg'}`
-        const selfieKey = `kyc/selfie-${timestamp}-${decoded.id}.${selfie.filename?.split('.').pop() || 'jpg'}`
+        const frontFname = String(idDocumentFront.filename || 'front.jpg')
+        const frontExt = frontFname.split('.').pop() || 'jpg'
+        const frontKey = `kyc/front-${timestamp}-${decoded.id}.${frontExt}`
         
-        const { error: frontErr } = await supabase.storage.from('kyc').upload(frontKey, idDocumentFront.data, { contentType: idDocumentFront.mimeType })
+        const selfieFname = String(selfie.filename || 'selfie.jpg')
+        const selfieExt = selfieFname.split('.').pop() || 'jpg'
+        const selfieKey = `kyc/selfie-${timestamp}-${decoded.id}.${selfieExt}`
+        
+        const { error: frontErr } = await supabase.storage.from('kyc').upload(frontKey, idDocumentFront.data, { contentType: idDocumentFront.mimeType || 'image/jpeg' })
         if (!frontErr) idFrontUrl = `${supabaseUrl}/storage/v1/object/public/kyc/${frontKey}`
 
-        const { error: selfieErr } = await supabase.storage.from('kyc').upload(selfieKey, selfie.data, { contentType: selfie.mimeType })
+        const { error: selfieErr } = await supabase.storage.from('kyc').upload(selfieKey, selfie.data, { contentType: selfie.mimeType || 'image/jpeg' })
         if (!selfieErr) selfieUrl = `${supabaseUrl}/storage/v1/object/public/kyc/${selfieKey}`
 
         if (idDocumentBack) {
-          const backKey = `kyc/back-${timestamp}-${decoded.id}.${idDocumentBack.filename?.split('.').pop() || 'jpg'}`
-          const { error: backErr } = await supabase.storage.from('kyc').upload(backKey, idDocumentBack.data, { contentType: idDocumentBack.mimeType })
+          const backFname = String(idDocumentBack.filename || 'back.jpg')
+          const backExt = backFname.split('.').pop() || 'jpg'
+          const backKey = `kyc/back-${timestamp}-${decoded.id}.${backExt}`
+          const { error: backErr } = await supabase.storage.from('kyc').upload(backKey, idDocumentBack.data, { contentType: idDocumentBack.mimeType || 'image/jpeg' })
           if (!backErr) idBackUrl = `${supabaseUrl}/storage/v1/object/public/kyc/${backKey}`
         }
       }
@@ -181,10 +188,10 @@ export default async function handler(req, res) {
           { text: '❌ Reject', callback_data: `reject_kyc_${decoded.id}` }
         ]
         const markup = { inline_keyboard: buttons.map(b => [{ text: b.text, callback_data: b.callback_data }]) }
-        await sendTelegramMessage(bot, `📋 KYC Submission\n\nUser: ${decoded.email}\nName: ${fullNameLegal || 'N/A'}`, markup)
-        if (idFrontUrl) await sendTelegramPhoto(bot, idFrontUrl, `ID Front - User: ${decoded.email}`)
-        if (selfieUrl) await sendTelegramPhoto(bot, selfieUrl, `Selfie - User: ${decoded.email}`)
-        if (idBackUrl) await sendTelegramPhoto(bot, idBackUrl, `ID Back - User: ${decoded.email}`)
+        await sendTelegramMessage(bot, `📋 New KYC Submission\n\nEmail: ${decoded.email}\nLegal Name: ${fullNameLegal || 'N/A'}\nDOB: ${dateOfBirth || 'N/A'}`, markup)
+        if (idFrontUrl) await sendTelegramPhoto(bot, idFrontUrl, `ID Front - ${decoded.email}`)
+        if (selfieUrl) await sendTelegramPhoto(bot, selfieUrl, `Selfie - ${decoded.email}`)
+        if (idBackUrl) await sendTelegramPhoto(bot, idBackUrl, `ID Back - ${decoded.email}`)
       } catch (e) {
         console.error('Telegram error:', e)
       }
@@ -212,7 +219,10 @@ export default async function handler(req, res) {
       busboy.on('file', (name, file, filename, encoding, mimetype) => {
         const fileChunks = []
         file.on('data', d => fileChunks.push(d))
-        file.on('end', () => { files[name] = { filename, mimeType: mimetype, data: Buffer.concat(fileChunks) } })
+        file.on('end', () => { 
+          const fname = typeof filename === 'string' ? filename : (filename?.filename || 'avatar.jpg')
+          files[name] = { filename: fname, mimeType: mimetype, data: Buffer.concat(fileChunks) } 
+        })
       })
       busboy.on('finish', resolve)
       busboy.on('error', reject)
@@ -226,7 +236,8 @@ export default async function handler(req, res) {
     let uploadError = null
     try {
       if (supabase) {
-        const ext = avatar.filename?.split('.').pop() || 'jpg'
+        const filename = avatar.filename || 'avatar.jpg'
+        const ext = String(filename).split('.').pop() || 'jpg'
         const avatarKey = `kyc/avatar-${Date.now()}-${decoded.id}.${ext}`
         const { error } = await supabase.storage.from('kyc').upload(avatarKey, avatar.data, { contentType: avatar.mimeType || 'image/jpeg' })
         if (error) {
@@ -275,7 +286,10 @@ export default async function handler(req, res) {
       busboy.on('file', (name, file, filename, encoding, mimetype) => {
         const fileChunks = []
         file.on('data', d => fileChunks.push(d))
-        file.on('end', () => { files[name] = { filename, mimeType: mimetype, data: Buffer.concat(fileChunks) } })
+        file.on('end', () => { 
+          const fname = typeof filename === 'string' ? filename : (filename?.filename || 'receipt.jpg')
+          files[name] = { filename: fname, mimeType: mimetype, data: Buffer.concat(fileChunks) } 
+        })
       })
       busboy.on('finish', resolve)
       busboy.on('error', reject)
@@ -288,8 +302,10 @@ export default async function handler(req, res) {
     let receiptUrl = null
     try {
       if (supabase) {
-        const receiptKey = `kyc/receipt-${Date.now()}-${decoded.id}.${receipt.filename?.split('.').pop() || 'jpg'}`
-        const { error } = await supabase.storage.from('kyc').upload(receiptKey, receipt.data, { contentType: receipt.mimeType })
+        const filename = receipt.filename || 'receipt.jpg'
+        const ext = String(filename).split('.').pop() || 'jpg'
+        const receiptKey = `kyc/receipt-${Date.now()}-${decoded.id}.${ext}`
+        const { error } = await supabase.storage.from('kyc').upload(receiptKey, receipt.data, { contentType: receipt.mimeType || 'image/jpeg' })
         if (!error) receiptUrl = `${supabaseUrl}/storage/v1/object/public/kyc/${receiptKey}`
       }
     } catch (e) {
