@@ -588,14 +588,10 @@ if (text === '/start') {
                   .from('deposits')
                   .update({ ecocash_number: number, ecocash_account_name: accountName, ecocash_reference: reference, status: 'PAYMENT_DETAILS_SENT' })
                   .eq('id', depositId)
-                  .select('*, user:users(*)')
+.select('*, user:users(*)')
                   .single()
-                if (deposit?.user?.telegram_chat_id) {
-              await bot.sendMessage(Number(deposit.user.telegram_chat_id), 
-                `Payment Details Received!\n\nEcoCash: ${number}\nAccount: ${accountName}\nReference: ${reference || 'N/A'}`)
-            }
-            // Details saved for user to see on website - no admin message needed
-          } else {
+                // Details saved - user will see them on website payment page (no Telegram notification)
+              } else {
                 await bot.sendMessage(chatId, 'Invalid format. Use: Ecocash,[phone],[account name],[depositId]')
               }
             }
