@@ -535,7 +535,19 @@ export default async function handler(req, res) {
           const text = body.message.text
 
 if (text === '/start') {
-             await bot.sendMessage(chatId, 'Welcome! Use /pending to view pending actions.')
+             await bot.sendMessage(chatId, 'Welcome! Send /link [your email] to link your account to receive payment notifications.')
+           } else if (text.startsWith('/link')) {
+             const email = text.substring(5).trim()
+             if (email) {
+               const { data: user, error } = await supabase.from('users').update({ telegram_chat_id: String(chatId) }).eq('email', email).select().single()
+               if (user) {
+                 await bot.sendMessage(chatId, '✅ Account linked! You will receive payment notifications.')
+               } else {
+                 await bot.sendMessage(chatId, '❌ Email not found. Please use the email you registered with.')
+               }
+             } else {
+               await bot.sendMessage(chatId, 'Usage: /link your@email.com')
+             }
            } else if (text === '/pending') {
              const { data: pending } = await supabase.from('deposits').select('*, user:users(*)').eq('status', 'WAITING_FOR_PAYMENT_DETAILS').limit(5)
              const msg = pending?.length 

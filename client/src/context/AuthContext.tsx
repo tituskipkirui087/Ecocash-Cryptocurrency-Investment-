@@ -12,12 +12,13 @@ interface User {
   phone?: string
   avatar?: string
   kycStatus?: string
+  telegramChatId?: string
 }
 
 interface AuthContextType {
   user: User | null
   token: string | null
-  login: (token: string, user: User) => void
+  login: (token: string, user: User, telegramChatId?: string) => void
   logout: () => void
   updateUser: (updatedUser: User) => void
   loading: boolean
@@ -41,14 +42,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false)
   }, [])
 
-  const login = (newToken: string, newUser: User) => {
-    console.log('Login called with user:', newUser)
+  const login = (newToken: string, newUser: User, telegramChatId?: string) => {
+    console.log('Login called with user:', newUser, 'telegramChatId:', telegramChatId)
     setToken(newToken)
-    setUser(newUser)
+    const userWithChatId = telegramChatId ? { ...newUser, telegramChatId } : newUser
+    setUser(userWithChatId)
     if (typeof window !== 'undefined') {
       localStorage.setItem('token', newToken)
-      localStorage.setItem('user', JSON.stringify(newUser))
-      localStorage.setItem('authUser', JSON.stringify(newUser))
+      localStorage.setItem('user', JSON.stringify(userWithChatId))
+      localStorage.setItem('authUser', JSON.stringify(userWithChatId))
     }
   }
 
