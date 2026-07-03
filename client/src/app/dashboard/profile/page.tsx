@@ -19,7 +19,8 @@ export default function ProfilePage() {
   const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
-    if (user && !initialized) {
+    // Set form data when user is available or after fetching
+    if (user) {
       setFormData({
         firstName: user.firstName || '',
         lastName: user.lastName || '',
@@ -28,9 +29,9 @@ export default function ProfilePage() {
       if (user.avatar) {
         setAvatarPreview(user.avatar)
       }
-      setInitialized(true)
+      if (!initialized) setInitialized(true)
     }
-  }, [user, initialized])
+  }, [user])
 
   useEffect(() => {
     if (!user && typeof window !== 'undefined' && localStorage.getItem('token')) {

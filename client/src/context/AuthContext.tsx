@@ -12,7 +12,7 @@ interface User {
   phone?: string
   avatar?: string
   kycStatus?: string
-  telegramChatId?: string
+  telegramChatId?: string | null
 }
 
 interface AuthContextType {
@@ -37,7 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log('Auth init - token:', !!storedToken, 'user:', storedUser ? JSON.parse(storedUser) : null)
     if (storedToken && storedUser) {
       setToken(storedToken)
-      setUser(JSON.parse(storedUser))
+      const parsedUser = JSON.parse(storedUser)
+      setUser(parsedUser)
     }
     setLoading(false)
   }, [])
