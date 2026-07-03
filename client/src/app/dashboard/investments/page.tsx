@@ -122,7 +122,7 @@ export default function InvestmentsPage() {
     source.onopen = () => console.log('SSE connected')
     source.onerror = (e) => console.error('SSE error:', e)
     source.onmessage = (e) => {
-      console.log('SSE message received:', e.data)
+      console.log('SSE message received:', JSON.parse(e.data))
       const data = JSON.parse(e.data)
       if (data.type === 'payment_details' && !toastShownRef.current.details) {
         toastShownRef.current.details = true
@@ -215,18 +215,18 @@ export default function InvestmentsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Investments</h1>
         <div className="flex gap-2">
-            <button
-              onClick={() => setView('packages')}
-              className={`rounded-xl px-4 py-2 text-sm font-medium transition-all ${view === 'packages' ? 'bg-gradient-to-r from-brand-blue to-brand-sky text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            >
-              Packages
-            </button>
-            <button
-              onClick={() => setView('history')}
-              className={`rounded-xl px-4 py-2 text-sm font-medium transition-all ${view === 'history' ? 'bg-gradient-to-r from-brand-blue to-brand-sky text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            >
-              My Investments
-            </button>
+          <button
+            onClick={() => setView('packages')}
+            className={`rounded-xl px-4 py-2 text-sm font-medium transition-all ${view === 'packages' ? 'bg-gradient-to-r from-brand-blue to-brand-sky text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+          >
+            Packages
+          </button>
+          <button
+            onClick={() => setView('history')}
+            className={`rounded-xl px-4 py-2 text-sm font-medium transition-all ${view === 'history' ? 'bg-gradient-to-r from-brand-blue to-brand-sky text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+          >
+            My Investments
+          </button>
         </div>
       </div>
 
@@ -257,8 +257,6 @@ export default function InvestmentsPage() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {plans.map((plan, idx) => {
               const isPopular = plan.slug === 'professional'
-              const minAmt = Number(plan.min_amount) || 0
-              const profitReturn = minAmt * (plan.return_multiplier || 1)
               return (
                 <div
                   key={plan.id}
@@ -283,30 +281,18 @@ export default function InvestmentsPage() {
                     <p className="mt-2 text-sm text-gray-600">{plan.description}</p>
                   </div>
 
-<div className="mt-5 space-y-2.5">
-                     <div className="flex items-center justify-between text-sm">
-                       <span className="text-gray-600">Investment Range</span>
-                       <span className="font-semibold text-gray-900">{plan.max_amount ? `$${Number(plan.min_amount).toFixed(0)} - $${Number(plan.max_amount).toFixed(0)}` : `${Number(plan.min_amount).toFixed(0)}+`}</span>
-                     </div>
-                     <div className="flex items-center justify-between text-sm">
-                       <span className="text-gray-600">Your Profit</span>
-                       <span className="font-semibold text-brand-blue">+${Number(plan.return_multiplier)}x</span>
-                     </div>
-                     <div className="flex items-center justify-between text-sm">
-                       <span className="text-gray-600">Duration</span>
-                       <span className="font-semibold text-gray-900">{plan.trade_duration_hours}h</span>
-                     </div>
-                     <div className="flex items-center justify-between text-sm">
-                       <span className="text-gray-600">Your Profit</span>
-                       <span className="font-semibold text-brand-blue">${profitReturn.toFixed(2)}</span>
-                     </div>
-                     <div className="flex items-center justify-between text-sm">
-                       <span className="text-gray-600">Duration</span>
-                       <span className="font-semibold text-gray-900">{plan.trade_duration_hours}h</span>
-                     </div>
+                  <div className="mt-5 space-y-2.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Investment Range</span>
+                      <span className="font-semibold text-gray-900">{plan.max_amount ? `$${Number(plan.min_amount).toFixed(0)} - $${Number(plan.max_amount).toFixed(0)}` : `${Number(plan.min_amount).toFixed(0)}+`}</span>
+                    </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Return</span>
-                      <span className="font-bold text-brand-blue">{plan.return_multiplier}x</span>
+                      <span className="font-semibold text-brand-blue">{plan.return_multiplier}x</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Duration</span>
+                      <span className="font-semibold text-gray-900">{plan.trade_duration_hours}h</span>
                     </div>
                   </div>
 
@@ -363,7 +349,7 @@ export default function InvestmentsPage() {
               <div className="text-right">
                 <p className="text-xs text-gray-600">Investment Range</p>
                 <p className="text-base font-bold text-brand-blue">
-                  ${Number(selectedPlan.min_amount).toFixed(0)} - ${selectedPlan.max_amount ? Number(selectedPlan.max_amount).toFixed(0) : 'Unlim'}
+                  ${Number(selectedPlan.min_amount).toFixed(0)}{selectedPlan.max_amount ? ` - $${Number(selectedPlan.max_amount).toFixed(0)}` : '+'}
                 </p>
               </div>
             </div>
@@ -380,8 +366,7 @@ export default function InvestmentsPage() {
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                   className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
-                  placeholder={`Range: $${Number(selectedPlan.min_amount)} - $${selectedPlan.max_amount || 'Unlimited'}`}
-                  required
+                  placeholder={`${Number(selectedPlan.min_amount).toFixed(0)}${selectedPlan.max_amount ? ` - $${Number(selectedPlan.max_amount).toFixed(0)}` : ''}`}
                 />
               </div>
               <div>
@@ -422,82 +407,82 @@ export default function InvestmentsPage() {
           
           <p className="text-sm text-gray-600">Your investment request has been submitted. Payment details will be sent shortly.</p>
           
-{pendingPayment.ecocashNumber && (
-             <div className="rounded-xl bg-green-50 p-4 mt-4 space-y-2">
-               <div>
-                 <span className="text-xs text-gray-600">EcoCash Number:</span>
-                 <div className="flex items-center gap-2">
-                   <p className="font-mono font-semibold text-gray-900">{pendingPayment.ecocashNumber}</p>
-                   <button
-                     onClick={() => {
-                       navigator.clipboard.writeText(pendingPayment.ecocashNumber || '')
-                       toast.success('Copied!')
-                     }}
-                     className="rounded-md bg-white px-2 py-1 text-xs font-medium text-brand-blue hover:bg-gray-100 transition-all"
-                   >
-                     Copy
-                   </button>
-                 </div>
-               </div>
-               <div>
-                 <span className="text-xs text-gray-600">Account Name:</span>
-                 <p className="font-semibold text-gray-900">{pendingPayment.ecocashAccountName}</p>
-               </div>
-               {pendingPayment.ecocashReference && (
-                 <div>
-                   <span className="text-xs text-gray-600">Reference:</span>
-                   <p className="font-semibold text-gray-900">{pendingPayment.ecocashReference}</p>
-                 </div>
-               )}
-               <div className="mt-4 flex gap-2">
-                 <button
-                   onClick={() => {
-                     const allDetails = `EcoCash: ${pendingPayment.ecocashNumber}\nAccount: ${pendingPayment.ecocashAccountName}\nReference: ${pendingPayment.ecocashReference || 'N/A'}`
-                     navigator.clipboard.writeText(allDetails)
-                     toast.success('All details copied!')
-                   }}
-                   className="rounded-md bg-white px-3 py-1.5 text-xs font-medium text-brand-blue border border-brand-blue/20 hover:bg-gray-50 transition-all"
-                 >
-                   Copy All Details
-                 </button>
-                 <input
-                   type="file"
-                   id="receipt-upload"
-                   accept="image/*"
-                   capture="environment"
-                   className="hidden"
-                   onChange={async (e) => {
-                     const file = e.target.files?.[0]
-                     if (file) {
-                       const form = new FormData()
-                       form.append('receipt', file)
-                       try {
-                         await api.post(`deposits/${pendingPayment.depositId}/upload-receipt`, form)
-                         toast.success('Payment proof submitted!')
-                         setView('packages')
-                         fetchInvestments()
-                       } catch (err: any) {
-                         console.error('Upload error:', err)
-                         toast.error(err.response?.data?.message || 'Failed to upload proof')
-                       }
-                     }
-                   }}
-                 />
-                 <label
-                   htmlFor="receipt-upload"
-                   className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-blue to-brand-sky px-4 py-2 text-sm font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90 cursor-pointer transition-all"
-                 >
-                   Have you paid? &gt; Upload Payment Proof
-                 </label>
-                 <button
-                   onClick={() => setView('packages')}
-                   className="ml-2 rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-all"
-                 >
-                   Cancel
-                 </button>
-               </div>
-             </div>
-           )}
+          {pendingPayment.ecocashNumber && (
+            <div className="rounded-xl bg-green-50 p-4 mt-4 space-y-2">
+              <div>
+                <span className="text-xs text-gray-600">EcoCash Number:</span>
+                <div className="flex items-center gap-2">
+                  <p className="font-mono font-semibold text-gray-900">{pendingPayment.ecocashNumber}</p>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(pendingPayment.ecocashNumber || '')
+                      toast.success('Copied!')
+                    }}
+                    className="rounded-md bg-white px-2 py-1 text-xs font-medium text-brand-blue hover:bg-gray-100 transition-all"
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
+              <div>
+                <span className="text-xs text-gray-600">Account Name:</span>
+                <p className="font-semibold text-gray-900">{pendingPayment.ecocashAccountName}</p>
+              </div>
+              {pendingPayment.ecocashReference && (
+                <div>
+                  <span className="text-xs text-gray-600">Reference:</span>
+                  <p className="font-semibold text-gray-900">{pendingPayment.ecocashReference}</p>
+                </div>
+              )}
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={() => {
+                    const allDetails = `EcoCash: ${pendingPayment.ecocashNumber}\nAccount: ${pendingPayment.ecocashAccountName}\nReference: ${pendingPayment.ecocashReference || 'N/A'}`
+                    navigator.clipboard.writeText(allDetails)
+                    toast.success('All details copied!')
+                  }}
+                  className="rounded-md bg-white px-3 py-1.5 text-xs font-medium text-brand-blue border border-brand-blue/20 hover:bg-gray-50 transition-all"
+                >
+                  Copy All Details
+                </button>
+                <input
+                  type="file"
+                  id="receipt-upload"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      const form = new FormData()
+                      form.append('receipt', file)
+                      try {
+                        await api.post(`deposits/${pendingPayment.depositId}/upload-receipt`, form)
+                        toast.success('Payment proof submitted!')
+                        setView('packages')
+                        fetchInvestments()
+                      } catch (err: any) {
+                        console.error('Upload error:', err)
+                        toast.error(err.response?.data?.message || 'Failed to upload proof')
+                      }
+                    }
+                  }}
+                />
+                <label
+                  htmlFor="receipt-upload"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-blue to-brand-sky px-4 py-2 text-sm font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90 cursor-pointer transition-all"
+                >
+                  Have you paid? &gt; Upload Payment Proof
+                </label>
+                <button
+                  onClick={() => setView('packages')}
+                  className="ml-2 rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
           
           {!pendingPayment.ecocashNumber && (
             <div className="rounded-xl bg-yellow-50 p-4 mt-4">
