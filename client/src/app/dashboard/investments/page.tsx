@@ -283,19 +283,19 @@ export default function InvestmentsPage() {
                     <p className="mt-2 text-sm text-gray-600">{plan.description}</p>
                   </div>
 
-                  <div className="mt-5 space-y-2.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Investment</span>
-                      <span className="font-semibold text-gray-900">${minAmt.toFixed(2)}{plan.max_amount ? ` - $${Number(plan.max_amount).toFixed(2)}` : '+'}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Your Profit</span>
-                      <span className="font-semibold text-brand-blue">${profitReturn.toFixed(2)}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Duration</span>
-                      <span className="font-semibold text-gray-900">{plan.trade_duration_hours}h</span>
-                    </div>
+<div className="mt-5 space-y-2.5">
+                     <div className="flex items-center justify-between text-sm">
+                       <span className="text-gray-600">Investment Range</span>
+                       <span className="font-semibold text-gray-900">${minAmt} - ${plan.max_amount ? Number(plan.max_amount) : 'Unlimited'}</span>
+                     </div>
+                     <div className="flex items-center justify-between text-sm">
+                       <span className="text-gray-600">Your Profit</span>
+                       <span className="font-semibold text-brand-blue">${profitReturn.toFixed(2)}</span>
+                     </div>
+                     <div className="flex items-center justify-between text-sm">
+                       <span className="text-gray-600">Duration</span>
+                       <span className="font-semibold text-gray-900">{plan.trade_duration_hours}h</span>
+                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Return</span>
                       <span className="font-bold text-brand-blue">{plan.return_multiplier}x</span>
@@ -353,9 +353,9 @@ export default function InvestmentsPage() {
                 <p className="text-base font-bold text-gray-900">{selectedPlan.name}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-gray-600">Expected Profit</p>
+                <p className="text-xs text-gray-600">Investment Range</p>
                 <p className="text-base font-bold text-brand-blue">
-                  ${(Number(selectedPlan.min_amount) * Number(selectedPlan.return_multiplier)).toFixed(2)}
+                  ${Number(selectedPlan.min_amount).toFixed(0)} - ${selectedPlan.max_amount ? Number(selectedPlan.max_amount).toFixed(0) : 'Unlim'}
                 </p>
               </div>
             </div>
@@ -367,12 +367,12 @@ export default function InvestmentsPage() {
                 <label className="block text-sm font-medium text-gray-700">Investment Amount (USD)</label>
                 <input
                   type="number"
-                  min={selectedPlan.min_amount}
-                  max={selectedPlan.max_amount || undefined}
+                  min={Number(selectedPlan.min_amount)}
+                  max={selectedPlan.max_amount ? Number(selectedPlan.max_amount) : undefined}
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                   className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
-                  placeholder={`Min $${Number(selectedPlan.min_amount).toFixed(2)}`}
+                  placeholder={`Range: $${Number(selectedPlan.min_amount)} - $${selectedPlan.max_amount || 'Unlimited'}`}
                   required
                 />
               </div>

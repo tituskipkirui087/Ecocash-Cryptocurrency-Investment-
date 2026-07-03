@@ -594,9 +594,8 @@ if (text === '/start') {
                 if (deposit?.user?.telegram_chat_id) {
                   await bot.sendMessage(Number(deposit.user.telegram_chat_id), 
                     `Payment Details Received!\n\nEcoCash: ${number}\nAccount: ${accountName}\nReference: ${reference || 'N/A'}`)
-                  await bot.sendMessage(chatId, '✅ Details sent to user!')
                 } else {
-                  await bot.sendMessage(chatId, '⚠️ User has no telegram_chat_id. Details saved but cannot notify.')
+                  await bot.sendMessage(chatId, '⚠️ User has no telegram_chat_id. Details saved.')
                 }
               } else {
                 await bot.sendMessage(chatId, 'Invalid format. Use: Ecocash,[phone],[account name],[depositId]')
@@ -615,7 +614,7 @@ if (text === '/start') {
             if (user?.telegram_chat_id) {
               await bot.sendMessage(Number(user.telegram_chat_id), '🎉 Account activated! You can now log in.')
             }
-            await bot.sendMessage(chatId, '✅ User activated!')
+            // Removed duplicate admin message - user gets single notification
           } else if (callbackData.startsWith('approve_kyc_')) {
             const userId = callbackData.replace('approve_kyc_', '')
             const { data: user } = await supabase.from('users').update({ kyc_status: 'APPROVED', is_verified: true, is_active: true }).eq('id', userId).select().single()
