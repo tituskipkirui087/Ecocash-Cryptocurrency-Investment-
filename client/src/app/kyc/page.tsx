@@ -133,8 +133,8 @@ const handleSubmit = async (e: React.FormEvent) => {
         throw new Error(errorMessage)
       }
       
-      toast.success('KYC submitted for verification! Admin will review shortly.')
-      router.push('/dashboard')
+      toast.success('KYC submitted for verification! Please wait for approval.')
+      router.push('/waiting-approval')
     } catch (err: any) {
       console.error('KYC submit error:', err)
       if (err.message) console.error('Error message:', err.message)

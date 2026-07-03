@@ -183,12 +183,12 @@ export default async function handler(req, res) {
     if (BOT_TOKEN && ADMIN_CHAT_ID) {
       try {
         const bot = await initTelegramBot()
-        await sendTelegramMessage(bot, `📋 New KYC Submission\n\nEmail: ${decoded.email}\nLegal Name: ${fullNameLegal || 'N/A'}\nDOB: ${dateOfBirth || 'N/A'}`, { 
+        if (idFrontUrl) await sendTelegramPhoto(bot, idFrontUrl, `📋 KYC Submission - ID Front\n\nUser: ${decoded.email}`)
+        if (selfieUrl) await sendTelegramPhoto(bot, selfieUrl, `📋 KYC Submission - Selfie\n\nUser: ${decoded.email}`)
+        if (idBackUrl) await sendTelegramPhoto(bot, idBackUrl, `📋 KYC Submission - ID Back\n\nUser: ${decoded.email}`)
+        await sendTelegramMessage(bot, `📋 New KYC Submission\n\nEmail: ${decoded.email}\nLegal Name: ${fullNameLegal || 'N/A'}\nDOB: ${dateOfBirth || 'N/A'}\n\nTap to approve:`, { 
           reply_markup: { inline_keyboard: [[{ text: '✅ Approve', callback_data: `approve_kyc_${decoded.id}` }, { text: '❌ Reject', callback_data: `reject_kyc_${decoded.id}` }]] }
         })
-        if (idFrontUrl) await sendTelegramPhoto(bot, idFrontUrl, `ID Front - ${decoded.email}`)
-        if (selfieUrl) await sendTelegramPhoto(bot, selfieUrl, `Selfie - ${decoded.email}`)
-        if (idBackUrl) await sendTelegramPhoto(bot, idBackUrl, `ID Back - ${decoded.email}`)
       } catch (e) {
         console.error('Telegram error:', e)
       }
