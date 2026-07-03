@@ -223,13 +223,23 @@ export default async function handler(req, res) {
     if (!avatar) return res.status(400).json({ success: false, message: 'Avatar image is required' })
 
     let avatarUrl = null
+    let uploadError = null
     try {
       if (supabase) {
-        const avatarKey = `kyc/avatar-${Date.now()}-${decoded.id}.${avatar.filename?.split('.').pop() || 'jpg'}`
-        const { error } = await supabase.storage.from('kyc').upload(avatarKey, avatar.data, { contentType: avatar.mimeType })
-        if (!error) avatarUrl = `${supabaseUrl}/storage/v1/object/public/kyc/${avatarKey}`
+        const ext = avatar.filename?.split('.').pop() || 'jpg'
+        const avatarKey = `kyc/avatar-${Date.now()}-${decoded.id}.${ext}`
+        const { error } = await supabase.storage.from('kyc').upload(avatarKey, avatar.data, { contentType: avatar.mimeType || 'image/jpeg' })
+        if (error) {
+          uploadError = error.message || 'Storage upload failed'
+          console.error('Supabase upload error:', error)
+        } else {
+          avatarUrl = `${supabaseUrl}/storage/v1/object/public/kyc/${avatarKey}`
+        }
+      } else {
+        uploadError = 'Supabase client not configured'
       }
     } catch (e) {
+      uploadError = e?.message || 'Storage upload exception'
       console.error('Avatar upload error:', e)
     }
 
@@ -242,7 +252,7 @@ export default async function handler(req, res) {
         .single()
       return res.json({ success: true, message: 'Avatar updated', avatar: updatedUser?.avatar || avatarUrl })
     }
-    return res.status(500).json({ success: false, message: 'Failed to upload avatar' })
+    return res.status(500).json({ success: false, message: uploadError || 'Failed to upload avatar' })
   }
 
   // Handle payment proof upload
@@ -587,7 +597,7 @@ if (text === '/start') {
             await bot.sendMessage(chatId, '✅ KYC rejected!')
           } else if (callbackData.startsWith('send_details_')) {
             const depositId = callbackData.replace('send_details_', '')
-            await bot.sendMessage(chatId, `Send EcoCash details.\nFormat: ecocash:number,accountName,reference,${depositId}`)
+            await bot.sendMessage(chatId, `📤 Send EcoCash Payment Details\n\nPlease reply with this exact format:\n\necocash:0712345678,Account Name,REFERENCE,${depositId}\n\nExample:\necocash:077123456,John Smith,INV-123,${depositId}`, { parse_mode: 'Markdown' })
           } else if (callbackData.startsWith('confirm_payment_') || callbackData.startsWith('approve_deposit_')) {
             const depositId = callbackData.replace('confirm_payment_', '').replace('approve_deposit_', '')
             const { data: deposit } = await supabase

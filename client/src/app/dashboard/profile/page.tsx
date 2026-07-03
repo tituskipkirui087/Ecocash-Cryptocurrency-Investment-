@@ -82,10 +82,12 @@ export default function ProfilePage() {
 
   const uploadAvatar = async (file: File) => {
     try {
+      console.log('Uploading avatar:', file.name, file.size, file.type)
       const form = new FormData()
       form.append('avatar', file)
       
       const res = await api.post('auth/avatar', form)
+      console.log('Avatar upload response:', res.data)
       
       if (res.data?.avatar) {
         updateUser({ ...user, avatar: res.data.avatar } as any)
@@ -94,7 +96,8 @@ export default function ProfilePage() {
       toast.success('Profile image updated')
     } catch (err: any) {
       console.error('Avatar upload error:', err)
-      const msg = err.response?.data?.message || err.message || 'Failed to upload image'
+      const msg = err.response?.data?.message || err.message || err.response?.data?.error || 'Failed to upload image'
+      console.error('Error details:', err.response?.data)
       toast.error(msg)
     }
   }
