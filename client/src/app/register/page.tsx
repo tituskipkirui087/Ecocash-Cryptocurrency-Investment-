@@ -33,8 +33,16 @@ export default function RegisterPage() {
 
     try {
       const { data } = await api.post('auth/register', formData)
-      toast.success('Registration successful! Please wait for account approval.')
-      router.push('/login?message=Please wait for admin approval before logging in')
+      // Store token temporarily for KYC page access
+      localStorage.setItem('token', data.data.token)
+      localStorage.setItem('user', JSON.stringify({
+        ...data.data.user,
+        firstName: data.data.user.first_name,
+        lastName: data.data.user.last_name,
+        phone: data.data.user.phone,
+      }))
+      toast.success('Registration successful! Please complete KYC verification.')
+      router.push('/kyc')
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed')
     } finally {
