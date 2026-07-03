@@ -286,7 +286,15 @@ export default function InvestmentsPage() {
 <div className="mt-5 space-y-2.5">
                      <div className="flex items-center justify-between text-sm">
                        <span className="text-gray-600">Investment Range</span>
-                       <span className="font-semibold text-gray-900">${minAmt} - ${plan.max_amount ? Number(plan.max_amount) : 'Unlimited'}</span>
+                       <span className="font-semibold text-gray-900">{plan.max_amount ? `$${Number(plan.min_amount).toFixed(0)} - $${Number(plan.max_amount).toFixed(0)}` : `${Number(plan.min_amount).toFixed(0)}+`}</span>
+                     </div>
+                     <div className="flex items-center justify-between text-sm">
+                       <span className="text-gray-600">Your Profit</span>
+                       <span className="font-semibold text-brand-blue">+${Number(plan.return_multiplier)}x</span>
+                     </div>
+                     <div className="flex items-center justify-between text-sm">
+                       <span className="text-gray-600">Duration</span>
+                       <span className="font-semibold text-gray-900">{plan.trade_duration_hours}h</span>
                      </div>
                      <div className="flex items-center justify-between text-sm">
                        <span className="text-gray-600">Your Profit</span>
