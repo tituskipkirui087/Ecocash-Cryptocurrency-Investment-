@@ -11,6 +11,7 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const urlEmail = searchParams.get('email') || ''
   const initialName = searchParams.get('name') || ''
+  const message = searchParams.get('message') || ''
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -64,10 +65,13 @@ function LoginForm() {
               <LogIn className="h-6 w-6 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
-            {initialName && (
+            {message && (
+              <p className="mt-2 text-sm text-yellow-600 bg-yellow-50 p-2 rounded-lg">{message}</p>
+            )}
+            {initialName && !message && (
               <p className="mt-2 text-lg font-medium text-brand-blue">Hi, {initialName}</p>
             )}
-            {!initialName && (
+            {!initialName && !message && (
               <p className="mt-2 text-gray-600">Sign in to your account</p>
             )}
           </div>

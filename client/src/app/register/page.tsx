@@ -32,16 +32,8 @@ export default function RegisterPage() {
 
     try {
       const { data } = await api.post('auth/register', formData)
-      const userData = data.data.user
-      const mappedUser = {
-        ...userData,
-        firstName: userData.first_name,
-        lastName: userData.last_name,
-        phone: userData.phone,
-        kycStatus: userData.kyc_status,
-      }
-      login(data.data.token, mappedUser)
-      router.push('/kyc')
+      toast.success('Registration successful! Please wait for account approval.')
+      router.push('/login?message=Please wait for admin approval before logging in')
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed')
     } finally {
