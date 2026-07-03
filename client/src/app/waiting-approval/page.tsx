@@ -22,7 +22,7 @@ export default function WaitingApprovalPage() {
         const user = data.data
         if (user.is_verified && user.is_active) {
           localStorage.removeItem('token')
-          router.push(`/login?email=${encodeURIComponent(user.email || '')}&message=Your account has been approved! Please log in.`)}
+          router.push(`/login?email=${encodeURIComponent(user.email || '')}&message=Your account has been approved! Please log in.`)
         }
       } catch (err) {
         console.error('Check approval error:', err)
