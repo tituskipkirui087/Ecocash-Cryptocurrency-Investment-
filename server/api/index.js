@@ -634,10 +634,10 @@ export default async function handler(req, res) {
               .eq('id', investmentId)
           }
         }
-        return res.sendStatus(200)
+        return res.status(200).end()
       } catch (e) {
         console.error('Telegram webhook error:', e)
-        return res.sendStatus(200)
+        return res.status(200).end()
       }
     }
 
