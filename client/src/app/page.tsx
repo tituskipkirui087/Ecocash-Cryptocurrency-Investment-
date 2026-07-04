@@ -213,6 +213,26 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="py-16 bg-gray-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="mb-10 text-center">
+              <span className="inline-block px-3 py-0.5 text-xs font-semibold tracking-wider text-brand-blue uppercase bg-brand-blue/70 rounded-full">Market Data</span>
+              <h2 className="mt-2 text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-blue to-brand-blue/80">Live Market Performance</h2>
+              <p className="mt-2 text-gray-300 max-w-2xl mx-auto text-sm">Track real-time market movements and make informed investment decisions</p>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="bg-dark-400 rounded-xl p-5 border border-gray-700">
+                <h3 className="text-base font-bold text-white mb-3 flex items-center"><Activity className="h-4 w-4 text-brand-blue mr-1.5" />Top Gainers</h3>
+                <TradingViewWidget symbol="NASDAQ:AAPL" height={280} />
+              </div>
+              <div className="bg-dark-400 rounded-xl p-5 border border-gray-700">
+                <h3 className="text-base font-bold text-white mb-3 flex items-center"><Activity className="h-4 w-4 text-green-400 mr-1.5" />Forex Market</h3>
+                <TradingViewWidget symbol="FX:USDZWD" height={280} />
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="py-16 bg-dark-300">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="mb-10 text-center">
@@ -391,26 +411,6 @@ export default function Home() {
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="py-16 bg-gray-900">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="mb-10 text-center">
-              <span className="inline-block px-3 py-0.5 text-xs font-semibold tracking-wider text-brand-blue uppercase bg-brand-blue/70 rounded-full">Market Data</span>
-              <h2 className="mt-2 text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-blue to-brand-blue/80">Live Market Performance</h2>
-              <p className="mt-2 text-gray-300 max-w-2xl mx-auto text-sm">Track real-time market movements and make informed investment decisions</p>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="bg-dark-400 rounded-xl p-5 border border-gray-700">
-                <h3 className="text-base font-bold text-white mb-3 flex items-center"><Activity className="h-4 w-4 text-brand-blue mr-1.5" />Top Gainers</h3>
-                <TradingViewWidget symbol="NASDAQ:AAPL" height={280} />
-              </div>
-              <div className="bg-dark-400 rounded-xl p-5 border border-gray-700">
-                <h3 className="text-base font-bold text-white mb-3 flex items-center"><Activity className="h-4 w-4 text-green-400 mr-1.5" />Forex Market</h3>
-                <TradingViewWidget symbol="FX:USDZWD" height={280} />
-              </div>
             </div>
           </div>
         </section>
