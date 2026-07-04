@@ -12,10 +12,10 @@ type Plan = {
   name: string
   slug: string
   description: string
-  minAmount: number
-  maxAmount: number | null
-  returnMultiplier: number
-  tradeDurationHours: number
+  min_amount: number
+  max_amount: number | null
+  return_multiplier: number
+  trade_duration_hours: number
 }
 
 export default function Home() {
@@ -252,7 +252,7 @@ export default function Home() {
           </div>
         </section>
 
-        {plans.length > 0 && (
+        
           <section className="py-16 bg-gray-900">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="mb-10 text-center">
@@ -267,7 +267,7 @@ export default function Home() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {plans.map((plan, idx) => {
-                  const profitReturn = plan.minAmount * plan.returnMultiplier
+                  const profitReturn = plan.min_amount * plan.return_multiplier
                   const colors = ['from-brand-blue to-brand-blue/80', 'from-green-600/80 to-green-400/80', 'from-indigo-600/80 to-indigo-400/80']
                   const isPopular = plan.slug === 'professional'
                   return (
@@ -285,10 +285,10 @@ export default function Home() {
                         <h3 className="text-lg font-bold text-white mb-1.5">{plan.name}</h3>
                         <p className="text-gray-400 text-2xs mb-3">{plan.description}</p>
                         <div className="space-y-2 mb-5">
-                          <div className="flex justify-between text-2xs"><span className="text-gray-400">Investment</span><span className="font-semibold text-white">${plan.minAmount}{plan.maxAmount ? ` - $${plan.maxAmount}` : '+'}</span></div>
+                          <div className="flex justify-between text-2xs"><span className="text-gray-400">Investment</span><span className="font-semibold text-white">${plan.min_amount}{plan.max_amount ? ` - $${plan.max_amount}` : '+'}</span></div>
                           <div className="flex justify-between text-2xs"><span className="text-gray-400">Your Profit</span><span className="font-semibold text-green-400">${profitReturn.toLocaleString()}</span></div>
-                          <div className="flex justify-between text-2xs"><span className="text-gray-400">Duration</span><span className="font-semibold text-white">{plan.tradeDurationHours}h</span></div>
-                          <div className="flex justify-between text-2xs"><span className="text-gray-400">Return</span><span className="font-bold text-brand-blue">{plan.returnMultiplier}x</span></div>
+                          <div className="flex justify-between text-2xs"><span className="text-gray-400">Duration</span><span className="font-semibold text-white">{plan.trade_duration_hours}h</span></div>
+                          <div className="flex justify-between text-2xs"><span className="text-gray-400">Return</span><span className="font-bold text-brand-blue">{plan.return_multiplier}x</span></div>
                         </div>
                         <Link href={token ? '/dashboard/investments' : '/register'} className={`block w-full text-center py-2 rounded-lg font-semibold text-white bg-gradient-to-r ${colors[idx % colors.length]} hover:opacity-90 transition-all text-xs`}>
                           {token ? 'Invest Now' : 'Get Started'}
@@ -300,7 +300,7 @@ export default function Home() {
               </div>
             </div>
           </section>
-        )}
+
 
         <section className="py-16 bg-dark-400">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
