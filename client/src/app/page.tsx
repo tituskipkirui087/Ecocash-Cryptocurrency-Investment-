@@ -269,62 +269,56 @@ export default function Home() {
                 <p className="text-gray-400 text-xs">Trades complete in 6 hours with guaranteed returns</p>
               </div>
             </div>
-          </div>
+</div>
         </section>
 
-        
-          <section className="py-16 bg-gray-900">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="mb-10 text-center">
-                <span className="inline-block px-3 py-0.5 text-xs font-semibold tracking-wider text-brand-blue uppercase bg-brand-blue/70 rounded-full">
-                  Investment Plans
-                </span>
-                <h2 className="mt-2 text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-blue to-brand-blue/80">
-                  Choose Your Investment Package
-                </h2>
-                <p className="mt-2 text-gray-300 max-w-2xl mx-auto text-sm">Select the perfect plan that suits your investment strategy</p>
-              </div>
-
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {plans.map((plan, idx) => {
-                  const colors = ['from-brand-blue to-brand-blue/80', 'from-green-600/80 to-green-400/80', 'from-indigo-600/80 to-indigo-400/80']
-                  const isPopular = plan.slug === 'professional'
-                  return (
-                    <div key={plan.id} className={`relative group ${isPopular ? 'transform scale-105' : ''}`}>
-                      <div className={`absolute inset-0 bg-gradient-to-b ${colors[idx % colors.length]}/20 rounded-xl transform rotate-1 group-hover:rotate-0 transition-all duration-300 opacity-50`} />
-                      <div className="relative bg-gray-800/90 rounded-xl p-5 border border-gray-700 group-hover:border-brand-blue/60 transition-all">
-                        {isPopular && (
-                          <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-                            <span className="bg-gradient-to-r from-amber-500 to-brand-blue/80 text-white text-2xs px-2.5 py-0.5 font-semibold rounded-bl rounded-tr">Most Popular</span>
-                          </div>
-                        )}
-                        <div className={`w-10 h-10 bg-gradient-to-br ${colors[idx % colors.length]} rounded-full flex items-center justify-center mb-3`}>
-                          <TrendingUp className="h-5 w-5 text-white" />
-                        </div>
-                        <h3 className="text-lg font-bold text-white mb-1.5">{plan.name}</h3>
-                        <p className="text-gray-400 text-2xs mb-3">{plan.description}</p>
-                        <div className="space-y-2 mb-5">
-                          <div className="flex justify-between text-2xs"><span className="text-gray-400">Investment Range</span><span className="font-semibold text-white">{plan.max_amount ? `$${Number(plan.min_amount).toFixed(0)} - $${Number(plan.max_amount).toFixed(0)}` : `${Number(plan.min_amount).toFixed(0)}+`}</span></div>
-                          <div className="flex justify-between text-2xs"><span className="text-gray-400">Return</span><span className="font-bold text-brand-blue">{plan.return_multiplier}x</span></div>
-                          <div className="flex justify-between text-2xs"><span className="text-gray-400">Duration</span><span className="font-semibold text-white">{plan.trade_duration_hours}h</span></div>
-                        </div>
-                        <div className="space-y-1.5 mb-4">
-                          <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Auto-profit locking</span></div>
-                          <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Stable trade signal protection</span></div>
-                          <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Market volatility shield</span></div>
-                          <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Instant payout after trade</span></div>
-                        </div>
-                        <Link href={token ? '/dashboard/investments' : '/register'} className={`block w-full text-center py-2 rounded-lg font-semibold text-white bg-gradient-to-r ${colors[idx % colors.length]} hover:opacity-90 transition-all text-xs`}>
-                          {token ? 'Invest Now' : 'Get Started'}
-                        </Link>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+        <section className="py-16 bg-gray-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="mb-10 text-center">
+              <span className="inline-block px-3 py-0.5 text-xs font-semibold tracking-wider text-brand-blue uppercase bg-brand-blue/70 rounded-full">Investment Plans</span>
+              <h2 className="mt-2 text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-blue to-brand-blue/80">Choose Your Investment Package</h2>
+              <p className="mt-2 text-gray-300 max-w-2xl mx-auto text-sm">Select the perfect plan that suits your investment strategy</p>
             </div>
-          </section>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {plans.map((plan, idx) => {
+                const colors = ['from-brand-blue to-brand-blue/80', 'from-green-600/80 to-green-400/80', 'from-indigo-600/80 to-indigo-400/80']
+                const isPopular = plan.slug === 'professional'
+                return (
+                  <div key={plan.id} className={`relative group ${isPopular ? 'transform scale-105' : ''}`}>
+                    <div className={`absolute inset-0 bg-gradient-to-b ${colors[idx % colors.length]}/20 rounded-xl transform rotate-1 group-hover:rotate-0 transition-all duration-300 opacity-50`} />
+                    <div className="relative bg-gray-800/90 rounded-xl p-5 border border-gray-700 group-hover:border-brand-blue/60 transition-all">
+                      {isPopular && (
+                        <div className="absolute -top-2 left-1/2 -translate-x-1/2">
+                          <span className="bg-gradient-to-r from-amber-500 to-brand-blue/80 text-white text-2xs px-2.5 py-0.5 font-semibold rounded-bl rounded-tr">Most Popular</span>
+                        </div>
+                      )}
+                      <div className={`w-10 h-10 bg-gradient-to-br ${colors[idx % colors.length]} rounded-full flex items-center justify-center mb-3`}>
+                        <TrendingUp className="h-5 w-5 text-white" />
+                      </div>
+                      <h3 className="text-lg font-bold text-white mb-1.5">{plan.name}</h3>
+                      <p className="text-gray-400 text-2xs mb-3">{plan.description}</p>
+                      <div className="space-y-2 mb-5">
+                        <div className="flex justify-between text-2xs"><span className="text-gray-400">Investment Range</span><span className="font-semibold text-white">{plan.max_amount ? `$${Number(plan.min_amount).toFixed(0)} - $${Number(plan.max_amount).toFixed(0)}` : `${Number(plan.min_amount).toFixed(0)}+`}</span></div>
+                        <div className="flex justify-between text-2xs"><span className="text-gray-400">Return</span><span className="font-bold text-brand-blue">{plan.return_multiplier}x</span></div>
+                        <div className="flex justify-between text-2xs"><span className="text-gray-400">Duration</span><span className="font-semibold text-white">{plan.trade_duration_hours}h</span></div>
+                      </div>
+                      <div className="space-y-1.5 mb-4">
+                        <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Auto-profit locking</span></div>
+                        <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Stable trade signal protection</span></div>
+                        <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Market volatility shield</span></div>
+                        <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Instant payout after trade</span></div>
+                      </div>
+                      <Link href={token ? '/dashboard/investments' : '/register'} className={`block w-full text-center py-2 rounded-lg font-semibold text-white bg-gradient-to-r ${colors[idx % colors.length]} hover:opacity-90 transition-all text-xs`}>
+                        {token ? 'Invest Now' : 'Get Started'}
+                      </Link>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
 
         <section className="py-16 bg-dark-400">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
