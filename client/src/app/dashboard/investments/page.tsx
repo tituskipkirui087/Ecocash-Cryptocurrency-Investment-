@@ -292,7 +292,7 @@ export default function InvestmentsPage() {
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Duration</span>
-                      <span className="font-semibold text-gray-900">{plan.trade_duration_hours}h</span>
+                      <span className="font-semibold text-gray-900">6h</span>
                     </div>
                   </div>
 
@@ -380,7 +380,7 @@ export default function InvestmentsPage() {
               </div>
             </div>
             <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
-              <p><strong>How it works:</strong> EcoCash will trade on your behalf for {selectedPlan.trade_duration_hours} hours. After the trade closes, you receive {selectedPlan.return_multiplier}x your investment as profit.</p>
+              <p><strong>How it works:</strong> EcoCash will trade on your behalf for 6 hours. After the trade closes, you receive {selectedPlan.return_multiplier}x your investment as profit.</p>
             </div>
             <div className="flex gap-3">
               <button type="submit" className="rounded-xl bg-gradient-to-r from-brand-blue to-brand-sky px-5 py-2 text-sm font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90 transition-all">

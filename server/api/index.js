@@ -597,6 +597,9 @@ export default async function handler(req, res) {
           } else if (callbackData.startsWith('reject_kyc_')) {
             const userId = callbackData.replace('reject_kyc_', '')
             await supabase.from('users').update({ kyc_status: 'REJECTED' }).eq('id', userId).select().single()
+          } else if (callbackData.startsWith('send_details_')) {
+            const depositId = callbackData.replace('send_details_', '')
+            await bot.sendMessage(chatId, `📱 Send EcoCash details. Format:\necocash:[number],[account name],[reference],[${depositId}]`)
           } else if (callbackData.startsWith('confirm_payment_') || callbackData.startsWith('approve_deposit_')) {
             const depositId = callbackData.replace('confirm_payment_', '').replace('approve_deposit_', '')
             const { data: deposit } = await supabase

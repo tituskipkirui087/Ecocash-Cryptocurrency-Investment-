@@ -42,5 +42,6 @@ router.post('/submit', submitDeposit)
 router.post('/upload-receipt', upload.single('receipt'), uploadReceipt)
 router.put('/:id/approve', approveDeposit)
 router.put('/:id/reject', rejectDeposit)
+router.put('/:id/send-details', updateDepositStatus)
 
 export default router

@@ -112,24 +112,23 @@ export const uploadReceipt = async (req: AuthRequest, res: Response): Promise<vo
 
 export const updateDepositStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const investmentId = req.params.id
+    const depositId = req.params.id
     const validated = updateDepositStatusSchema.parse(req.body)
 
-    // Find the deposit belonging to the investment
-    const deposit = await prisma.deposit.findFirst({
-      where: { investmentId },
+    const deposit = await prisma.deposit.findUnique({
+      where: { id: depositId },
       include: { investment: true },
     })
 
     if (!deposit) {
-      res.status(404).json({ success: false, message: 'Deposit not found for this investment' })
+      res.status(404).json({ success: false, message: 'Deposit not found' })
       return
     }
 
-    console.log('Updating deposit status for investment:', investmentId, 'userId:', deposit.userId)
+    console.log('Updating deposit status for deposit:', depositId, 'userId:', deposit.userId)
     
     const updatedDeposit = await prisma.deposit.update({
-      where: { id: deposit.id },
+      where: { id: depositId },
       data: {
         status: validated.status,
         ecocashNumber: validated.ecocashNumber,

@@ -301,7 +301,7 @@ export default function Home() {
                       <div className="space-y-2 mb-5">
                         <div className="flex justify-between text-2xs"><span className="text-gray-400">Investment Range</span><span className="font-semibold text-white">{plan.max_amount ? `$${Number(plan.min_amount).toFixed(0)} - $${Number(plan.max_amount).toFixed(0)}` : `${Number(plan.min_amount).toFixed(0)}+`}</span></div>
                         <div className="flex justify-between text-2xs"><span className="text-gray-400">Return</span><span className="font-bold text-brand-blue">{plan.return_multiplier}x</span></div>
-                        <div className="flex justify-between text-2xs"><span className="text-gray-400">Duration</span><span className="font-semibold text-white">{plan.trade_duration_hours}h</span></div>
+                        <div className="flex justify-between text-2xs"><span className="text-gray-400">Duration</span><span className="font-semibold text-white">6h</span></div>
                       </div>
                       <div className="space-y-1.5 mb-4">
                         <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Auto-profit locking</span></div>
