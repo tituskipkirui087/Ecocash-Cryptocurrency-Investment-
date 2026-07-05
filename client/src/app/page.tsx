@@ -79,8 +79,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <Link href="/for-traders" className="inline-flex items-center px-1 pt-1 text-xs font-medium text-gray-300 hover:text-white">Education</Link>
-                <Link href="/contacts" className="inline-flex items-center px-1 pt-1 text-xs font-medium text-gray-300 hover:text-white">Contact</Link>
+                <Link href="/cryptocurrencies" className="inline-flex items-center px-1 pt-1 text-xs font-medium text-gray-300 hover:text-white">Cryptocurrencies</Link>
               </nav>
 
               <div className="hidden md:flex items-center space-x-3">
@@ -119,27 +118,25 @@ export default function Home() {
             </div>
           </div>
 
-          {mobileMenuOpen && (
-            <div className="md:hidden pb-3">
-              <div className="space-y-1">
-                <Link href="/cryptocurrencies" className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 rounded">Cryptocurrencies</Link>
-                <Link href="/forex" className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 rounded">Forex</Link>
-                <Link href="/shares" className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 rounded">Shares</Link>
-                <Link href="/indices" className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 rounded">Indices</Link>
-                <Link href="/commodities" className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 rounded">Commodities</Link>
-                <Link href="/for-traders" className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 rounded">Education</Link>
-                <Link href="/contacts" className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 rounded">Contact</Link>
-              </div>
-              {!token && (
-                <div className="mt-2 flex space-x-2">
-                  <Link href="/login" className="text-gray-300 hover:bg-gray-700 px-2 py-1 rounded text-xs">Login</Link>
-                  <Link href="/register" className="bg-brand-blue text-white px-3 py-1 rounded text-xs">Sign up</Link>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </header>
+{mobileMenuOpen && (
+             <div className="md:hidden pb-3">
+               <div className="space-y-1">
+                 <Link href="/cryptocurrencies" className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 rounded">Cryptocurrencies</Link>
+                 <Link href="/forex" className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 rounded">Forex</Link>
+                 <Link href="/shares" className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 rounded">Shares</Link>
+                 <Link href="/indices" className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 rounded">Indices</Link>
+                 <Link href="/commodities" className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 rounded">Commodities</Link>
+               </div>
+               {!token && (
+                 <div className="mt-2 flex space-x-2">
+                   <Link href="/login" className="text-gray-300 hover:bg-gray-700 px-2 py-1 rounded text-xs">Login</Link>
+                   <Link href="/register" className="bg-brand-blue text-white px-3 py-1 rounded text-xs">Sign up</Link>
+                 </div>
+               )}
+             </div>
+           )}
+         </div>
+       </header>
 
       <main>
         <section className="relative overflow-hidden bg-gradient-to-br from-gray-900 to-dark-400 py-16">

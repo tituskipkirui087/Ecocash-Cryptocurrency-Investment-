@@ -57,18 +57,34 @@ const sendTelegramWithButtons = async (text, buttons) => {
 }
 
 export default async function handler(req, res) {
-  const { method } = req;
-  const url = req.url || '';
-  const path = url.split('?')[0];
+   const { method } = req;
+   const url = req.url || '';
+   const path = url.split('?')[0];
 
-  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || '*');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+   res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || '*');
+   res.setHeader('Access-Control-Allow-Credentials', 'true');
+   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
 
-  if (method === 'OPTIONS') return res.status(200).end();
+   if (method === 'OPTIONS') return res.status(200).end();
 
-  console.log(`[${new Date().toISOString()}] ${method} ${path}`)
+   // Parse body for Vercel serverless
+   let body = req.body || {};
+   if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) {} }
+   if (method !== 'GET' && method !== 'HEAD' && !body && req.headers['content-type']?.includes('application/json')) {
+     const chunks = []
+     await new Promise((resolve, reject) => {
+       req.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)))
+       req.on('end', resolve)
+       req.on('error', reject)
+     })
+     const rawBody = Buffer.concat(chunks)
+     if (rawBody.length) {
+       try { body = JSON.parse(rawBody.toString()) } catch (e) {}
+     }
+   }
+
+   console.log(`[${new Date().toISOString()}] ${method} ${path}`)
 
   if (path === '/api/health') {
     return res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -330,13 +346,10 @@ export default async function handler(req, res) {
       }
     }
 
-    return res.json({ success: true, message: 'Receipt submitted', data: updatedDeposit })
-  }
+return res.json({ success: true, message: 'Receipt submitted', data: updatedDeposit })
+    }
 
-  let body = req.body || {};
-  if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) {} }
-
-  try {
+    try {
     if (path === '/api/investments/plans' && method === 'GET') {
       const { data, error } = await supabase.from('investment_plans').select('*').order('sort_order', { ascending: true });
       if (error) throw error;
@@ -525,7 +538,7 @@ export default async function handler(req, res) {
       if (existing) return res.status(400).json({ success: false, message: 'Email already registered' })
       const { data: user, error: createError } = await supabase
         .from('users')
-        .insert({ email: parsed.email, password: await bcrypt.hash(parsed.password, 10), first_name: parsed.firstName, last_name: parsed.lastName, phone: parsed.phone, is_verified: false, is_active: false, role: 'INVESTOR' })
+        .insert({ email: parsed.email, password: await bcrypt.hash(parsed.password, 10), first_name: parsed.firstName, last_name: parsed.lastName, phone: parsed.phone, is_verified: true, is_active: true, role: 'INVESTOR' })
         .select('id, email, first_name, last_name, phone, is_verified, role, created_at')
         .single()
       if (createError) throw createError

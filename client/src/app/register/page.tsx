@@ -33,16 +33,16 @@ export default function RegisterPage() {
 
     try {
       const { data } = await api.post('auth/register', formData)
-      // Store token temporarily for KYC page access
       localStorage.setItem('token', data.data.token)
       localStorage.setItem('user', JSON.stringify({
         ...data.data.user,
         firstName: data.data.user.first_name,
         lastName: data.data.user.last_name,
         phone: data.data.user.phone,
+        kycStatus: data.data.user.kyc_status,
       }))
-      toast.success('Registration successful! Please complete KYC verification.')
-      router.push('/kyc')
+      toast.success('Registration successful!')
+      router.push('/dashboard')
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed')
     } finally {
@@ -51,116 +51,104 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-brand-blue/5 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-black px-4">
       <div className="w-full max-w-md">
-        <div className="rounded-3xl bg-white p-8 shadow-xl border border-gray-100">
-          <div className="mb-6 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-blue to-brand-sky">
-              <UserPlus className="h-6 w-6 text-white" />
+        <div className="rounded-2xl bg-dark-300 p-8 shadow-xl border border-gray-700">
+          <div className="mb-5 text-center">
+            <div className="mx-auto mb-2.5 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-blue to-cyan-500">
+              <UserPlus className="h-5 w-5 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Create Account</h1>
-            <p className="mt-2 text-gray-600">Join EcoCash Investment Platform</p>
+            <h1 className="text-xl font-bold text-white">Create Account</h1>
+            <p className="mt-1.5 text-gray-400 text-xs">Join EcoCash Investment Platform</p>
           </div>
 
           {error && (
-            <div className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-600 border border-red-100">{error}</div>
+            <div className="mb-3 rounded-lg bg-red-900/20 p-2.5 text-2xs text-red-400 border border-red-400/20">{error}</div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-2.5">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700">First Name</label>
-                <div className="relative mt-1">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <input
-                    name="firstName"
-                    type="text"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
-                    required
-                    placeholder="John"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Last Name</label>
-                <div className="relative mt-1">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <input
-                    name="lastName"
-                    type="text"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
-                    required
-                    placeholder="Doe"
-                  />
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Email Address</label>
-              <div className="relative mt-1">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <label className="block text-2xs font-medium text-gray-400">First Name</label>
                 <input
-                  name="email"
-                  type="email"
-                  value={formData.email}
+                  name="firstName"
+                  type="text"
+                  value={formData.firstName}
                   onChange={handleChange}
-                  className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
+                  className="w-full rounded-lg border border-gray-600 bg-dark-400 px-3 py-2 text-xs text-white focus:border-brand-blue focus:outline-none"
                   required
-                  placeholder="you@example.com"
+                  placeholder="John"
                 />
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-              <div className="relative mt-1">
-                <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <div>
+                <label className="block text-2xs font-medium text-gray-400">Last Name</label>
                 <input
-                  name="phone"
-                  type="tel"
-                  value={formData.phone}
+                  name="lastName"
+                  type="text"
+                  value={formData.lastName}
                   onChange={handleChange}
-                  className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
-                  placeholder="+263..."
+                  className="w-full rounded-lg border border-gray-600 bg-dark-400 px-3 py-2 text-xs text-white focus:border-brand-blue focus:outline-none"
+                  required
+                  placeholder="Doe"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
+              <label className="block text-2xs font-medium text-gray-400">Email</label>
+              <input
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-gray-600 bg-dark-400 px-3 py-2 text-xs text-white focus:border-brand-blue focus:outline-none"
+                required
+                placeholder="you@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-2xs font-medium text-gray-400">Phone</label>
+              <input
+                name="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-gray-600 bg-dark-400 px-3 py-2 text-xs text-white focus:border-brand-blue focus:outline-none"
+                placeholder="+263..."
+              />
+            </div>
+            <div>
+              <label className="block text-2xs font-medium text-gray-400">Password</label>
               <div className="relative mt-1">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
+                  className="w-full rounded-lg border border-gray-600 bg-dark-400 px-3 py-2 text-xs text-white focus:border-brand-blue focus:outline-none"
                   required
-                  minLength={8}
+                  minLength={6}
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                  className="absolute right-2.5 top-2.5 text-gray-500 hover:text-gray-300"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-blue to-brand-sky px-4 py-2.5 font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90 disabled:opacity-50 transition-all duration-200"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-brand-blue to-cyan-500 px-3 py-2 font-medium text-white text-xs hover:from-brand-blue/90 hover:to-cyan-500/90 disabled:opacity-50 transition-all"
             >
-              <UserPlus size={18} />
+              <UserPlus size={14} />
               {loading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-gray-600">
+          <p className="mt-5 text-center text-2xs text-gray-400">
             Already have an account?{' '}
             <Link href="/login" className="font-medium text-brand-blue hover:underline">
               Sign In
