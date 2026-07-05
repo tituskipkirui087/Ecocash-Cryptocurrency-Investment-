@@ -38,8 +38,11 @@ app.get('/api/sse/payment-updates', (req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'no-cache')
     res.setHeader('Connection', 'keep-alive')
     res.setHeader('Access-Control-Allow-Origin', '*')
-    ;(global.sseClients ||= []).push({ userId: decoded.id, send: (data) => res.write(`data: ${data}\n\n`) })
-    req.on('close', () => { global.sseClients = (global.sseClients || []).filter(c => c.userId !== decoded.id) })
+    if (!global.sseClients) global.sseClients = []
+    global.sseClients.push({ userId: decoded.id, send: (data) => res.write(`data: ${data}\n\n`) })
+    req.on('close', () => {
+      global.sseClients = global.sseClients?.filter(c => c.userId !== decoded.id)
+    })
   } catch { res.status(401).end() }
 })
 
@@ -56,3 +59,4 @@ app.use((_req: Request, res: Response) => {
 })
 
 export default app
+export { prisma }

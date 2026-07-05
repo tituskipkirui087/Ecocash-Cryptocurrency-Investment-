@@ -1,7 +1,10 @@
 import { PrismaClient } from '@prisma/client'
 
-const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL
-
 export const prisma = new PrismaClient({
-  log: ['error'],
+  log: ['error', 'warn'],
 })
+
+// Initialize on module load
+if (typeof window === 'undefined') {
+  prisma.$connect().catch(e => console.error('Prisma connect error:', e))
+}
