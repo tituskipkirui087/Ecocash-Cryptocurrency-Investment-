@@ -2,9 +2,8 @@
   "version": 2,
   "builds": [
     {
-      "src": "server/package.json",
-      "use": "@vercel/node",
-      "config": { "includeFiles": ["server/prisma/**"] }
+      "src": "package.json",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
