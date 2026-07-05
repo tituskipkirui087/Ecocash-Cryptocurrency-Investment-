@@ -285,10 +285,10 @@ export default function Home() {
                 <p className="mt-2 text-gray-300 max-w-2xl mx-auto text-sm">Select the perfect plan that suits your investment strategy</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-{plans.map((plan, idx) => {
-                    const colors = ['from-brand-blue to-brand-blue/80', 'from-green-600/80 to-green-400/80', 'from-indigo-600/80 to-indigo-400/80']
-                    const isPopular = plan.slug === 'professional'
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {plans.map((plan, idx) => {
+                  const colors = ['from-brand-blue to-brand-blue/80', 'from-green-600/80 to-green-400/80', 'from-indigo-600/80 to-indigo-400/80']
+                  const isPopular = plan.slug === 'professional'
                   return (
                     <div key={plan.id} className={`relative group ${isPopular ? 'transform scale-105' : ''}`}>
                       <div className={`absolute inset-0 bg-gradient-to-b ${colors[idx % colors.length]}/20 rounded-xl transform rotate-1 group-hover:rotate-0 transition-all duration-300 opacity-50`} />
