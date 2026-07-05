@@ -36,10 +36,10 @@ export default function RegisterPage() {
       localStorage.setItem('token', data.data.token)
       localStorage.setItem('user', JSON.stringify({
         ...data.data.user,
-        firstName: data.data.user.first_name,
-        lastName: data.data.user.last_name,
+        firstName: data.data.user.firstName,
+        lastName: data.data.user.lastName,
         phone: data.data.user.phone,
-        kycStatus: data.data.user.kyc_status,
+        kycStatus: data.data.user.kycStatus,
       }))
       toast.success('Registration successful!')
       router.push('/dashboard')
