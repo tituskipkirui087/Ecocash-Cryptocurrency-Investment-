@@ -39,8 +39,8 @@ export const register = async (req: AuthRequest, res: Response): Promise<void> =
           firstName,
           lastName,
           phone,
-          isVerified: false,
-          isActive: false,
+          isVerified: true,
+          isActive: true,
         },
       select: {
         id: true,
@@ -92,11 +92,6 @@ export const login = async (req: AuthRequest, res: Response): Promise<void> => {
 
     if (!user || !await bcrypt.compare(password, user.password)) {
       res.status(401).json({ success: false, message: 'Invalid credentials' })
-      return
-    }
-
-    if (!user.isActive) {
-      res.status(403).json({ success: false, message: 'Your account is pending admin approval. Please complete KYC.' })
       return
     }
 
