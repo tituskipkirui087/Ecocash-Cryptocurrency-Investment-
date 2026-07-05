@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server/package.json",
+      "use": "@vercel/node",
+      "config": { "includeFiles": ["server/prisma/**"] }
+    }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "server/dist/index.js" }
+  ]
+}
