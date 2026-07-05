@@ -3,11 +3,11 @@
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/node",
+      "use": "@vercel/node-serverless",
       "config": { "includeFiles": ["prisma/**"] }
     }
   ],
   "routes": [
-    { "src": "/(.*)", "dest": "dist/index.js" }
+    { "src": "/(.*)", "dest": "src/index.ts" }
   ]
 }
