@@ -437,6 +437,14 @@ export default async function handler(req, res) {
       return res.json({ success: true, data });
     }
 
+    if (path === '/api/admin/deposits' && method === 'GET') {
+      const decoded = getUserId(req)
+      if (!decoded || decoded.role !== 'ADMIN') return res.status(401).json({ success: false, message: 'Admin access required' })
+      const { data, error } = await supabase.from('deposits').select('*, user:users(*)').order('created_at', { ascending: false })
+      if (error) throw error;
+      return res.json({ success: true, data });
+    }
+
     if (path === '/api/auth/profile' && method === 'GET') {
       const decoded = getUserId(req)
       if (!decoded) return res.status(401).json({ success: false, message: 'Authorization required' })
@@ -474,6 +482,21 @@ export default async function handler(req, res) {
         .select('*, user:users(*)')
         .single()
       if (error) throw error
+      
+      // Notify user via SSE
+      const userId = deposit.user_id || deposit.user?.id
+      if (userId && (global as any).sseClients) {
+        ;(global as any).sseClients.forEach((client: any) => {
+          if (client.userId === userId) {
+            client.send(JSON.stringify({
+              type: 'payment_details',
+              ecocashNumber,
+              ecocashAccountName,
+              ecocashReference
+            }))
+          }
+        })
+      }
       return res.json({ success: true, message: 'Payment details sent', data: deposit })
     }
 
@@ -571,10 +594,26 @@ export default async function handler(req, res) {
               const accountName = parts[1]
               const depositId = parts[2]
               const reference = parts.length >= 4 ? parts[3] : ''
-              await supabase
+              const { data: deposit } = await supabase
                 .from('deposits')
                 .update({ ecocash_number: number, ecocash_account_name: accountName, ecocash_reference: reference, status: 'PAYMENT_DETAILS_SENT' })
                 .eq('id', depositId)
+                .select('user_id')
+                .single()
+              
+              // Notify user via SSE
+              if (deposit && (global as any).sseClients) {
+                ;(global as any).sseClients.forEach((client: any) => {
+                  if (client.userId === deposit.user_id) {
+                    client.send(JSON.stringify({
+                      type: 'payment_details',
+                      ecocashNumber: number,
+                      ecocashAccountName: accountName,
+                      ecocashReference: reference
+                    }))
+                  }
+                })
+              }
             } else {
               await bot.sendMessage(chatId, 'Invalid format. Use: Ecocash,[phone],[account name],[depositId]')
             }
