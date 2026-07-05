@@ -17,9 +17,24 @@ declare global {
 const app = express()
 const PORT = Number(process.env.PORT) || 5000
 
+const allowedOrigins = [
+  'https://ecocash-investment-copmanyzm.vercel.app',
+  'https://ecocash-investment-copman-git-3d4518-tituskipkirui087s-projects.vercel.app',
+  'https://ecocash-investment-copmany-gio1ysfg9-tituskipkirui087s-projects.vercel.app',
+  process.env.FRONTEND_URL,
+].filter(Boolean) as string[]
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  credentials: true
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true)
+      return
+    }
+    callback(new Error('Not allowed by CORS'))
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }))
 app.use(express.json())
 
