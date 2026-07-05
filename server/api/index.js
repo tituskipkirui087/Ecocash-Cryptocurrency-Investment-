@@ -86,15 +86,21 @@ export default async function handler(req, res) {
 
    console.log(`[${new Date().toISOString()}] ${method} ${path}`)
 
-  if (path === '/api/health') {
-    return res.json({ status: 'ok', timestamp: new Date().toISOString() });
-  }
+if (path === '/api/health') {
+     return res.json({ status: 'ok', timestamp: new Date().toISOString() });
+   }
 
-  if (path === '/api/sse/payment-updates' && method === 'GET') {
-    return res.json({ success: true, message: 'SSE not supported on Vercel - use polling' })
-  }
+   if (path === '/api/sse/payment-updates' && method === 'GET') {
+     return res.json({ success: true, message: 'SSE not supported on Vercel - use polling' })
+   }
 
-  const getUserId = (req) => {
+   // Check if supabase is configured
+   if (!supabase) {
+     console.error('Supabase client not configured - missing key')
+     return res.status(500).json({ success: false, message: 'Server configuration error - contact admin' })
+   }
+
+   const getUserId = (req) => {
     const authHeader = req.headers.authorization
     if (!authHeader || !authHeader.startsWith('Bearer ')) return null
     try {
@@ -346,10 +352,10 @@ export default async function handler(req, res) {
       }
     }
 
-return res.json({ success: true, message: 'Receipt submitted', data: updatedDeposit })
-    }
+    return res.json({ success: true, message: 'Receipt submitted', data: updatedDeposit })
+  }
 
-    try {
+  try {
     if (path === '/api/investments/plans' && method === 'GET') {
       const { data, error } = await supabase.from('investment_plans').select('*').order('sort_order', { ascending: true });
       if (error) throw error;
@@ -360,12 +366,6 @@ return res.json({ success: true, message: 'Receipt submitted', data: updatedDepo
       const decoded = getUserId(req)
       if (!decoded) return res.status(401).json({ success: false, message: 'Authorization required' })
       
-      // Check if user is verified (KYC approved)
-      const { data: dbUser } = await supabase.from('users').select('is_verified').eq('id', decoded.id).single()
-      if (!dbUser?.is_verified) {
-        return res.status(403).json({ success: false, message: 'KYC verification required before investing' })
-      }
-
       const { amount, planId, paymentMethod } = body
       const { data: deposit, error: depositErr } = await supabase
         .from('deposits')
@@ -561,7 +561,6 @@ return res.json({ success: true, message: 'Receipt submitted', data: updatedDepo
       const { data: user, error } = await supabase.from('users').select('*').eq('email', parsed.email).single()
       if (error || !user) return res.status(401).json({ success: false, message: 'Invalid credentials' })
       if (!(await bcrypt.compare(parsed.password, user.password))) return res.status(401).json({ success: false, message: 'Invalid credentials' })
-      if (!user.is_active) return res.status(403).json({ success: false, message: 'Account pending approval' })
       const { password, ...u } = user
       const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' })
       return res.json({ success: true, message: 'Login successful', data: { user: u, token } })
