@@ -286,10 +286,9 @@ export default function Home() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {plans.map((plan, idx) => {
-                  const profitReturn = plan.min_amount * plan.return_multiplier
-                  const colors = ['from-brand-blue to-brand-blue/80', 'from-green-600/80 to-green-400/80', 'from-indigo-600/80 to-indigo-400/80']
-                  const isPopular = plan.slug === 'professional'
+{plans.map((plan, idx) => {
+                    const colors = ['from-brand-blue to-brand-blue/80', 'from-green-600/80 to-green-400/80', 'from-indigo-600/80 to-indigo-400/80']
+                    const isPopular = plan.slug === 'professional'
                   return (
                     <div key={plan.id} className={`relative group ${isPopular ? 'transform scale-105' : ''}`}>
                       <div className={`absolute inset-0 bg-gradient-to-b ${colors[idx % colors.length]}/20 rounded-xl transform rotate-1 group-hover:rotate-0 transition-all duration-300 opacity-50`} />
@@ -305,10 +304,15 @@ export default function Home() {
                         <h3 className="text-lg font-bold text-white mb-1.5">{plan.name}</h3>
                         <p className="text-gray-400 text-2xs mb-3">{plan.description}</p>
                         <div className="space-y-2 mb-5">
-                          <div className="flex justify-between text-2xs"><span className="text-gray-400">Investment</span><span className="font-semibold text-white">${plan.min_amount}{plan.max_amount ? ` - $${plan.max_amount}` : '+'}</span></div>
-                          <div className="flex justify-between text-2xs"><span className="text-gray-400">Your Profit</span><span className="font-semibold text-green-400">${profitReturn.toLocaleString()}</span></div>
-                          <div className="flex justify-between text-2xs"><span className="text-gray-400">Duration</span><span className="font-semibold text-white">{plan.trade_duration_hours}h</span></div>
+                          <div className="flex justify-between text-2xs"><span className="text-gray-400">Investment Range</span><span className="font-semibold text-white">{plan.max_amount ? `$${Number(plan.min_amount).toFixed(0)} - $${Number(plan.max_amount).toFixed(0)}` : `${Number(plan.min_amount).toFixed(0)}+`}</span></div>
                           <div className="flex justify-between text-2xs"><span className="text-gray-400">Return</span><span className="font-bold text-brand-blue">{plan.return_multiplier}x</span></div>
+                          <div className="flex justify-between text-2xs"><span className="text-gray-400">Duration</span><span className="font-semibold text-white">{plan.trade_duration_hours}h</span></div>
+                        </div>
+                        <div className="space-y-1.5 mb-4">
+                          <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Auto-profit locking</span></div>
+                          <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Stable trade signal protection</span></div>
+                          <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Market volatility shield</span></div>
+                          <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Instant payout after trade</span></div>
                         </div>
                         <Link href={token ? '/dashboard/investments' : '/register'} className={`block w-full text-center py-2 rounded-lg font-semibold text-white bg-gradient-to-r ${colors[idx % colors.length]} hover:opacity-90 transition-all text-xs`}>
                           {token ? 'Invest Now' : 'Get Started'}
