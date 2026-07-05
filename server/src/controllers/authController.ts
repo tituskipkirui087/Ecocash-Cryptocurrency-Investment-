@@ -21,16 +21,19 @@ const loginSchema = z.object({
 
 export const register = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    console.log('Register request body:', req.body)
     const validated = registerSchema.parse(req.body)
     const { email, password, firstName, lastName, phone } = validated
 
     const existingUser = await prisma.user.findUnique({ where: { email } })
+    console.log('Existing user check:', existingUser ? 'exists' : 'new')
     if (existingUser) {
       res.status(400).json({ success: false, message: 'Email already registered' })
       return
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)
+    console.log('Password hashed')
 
     const user = await prisma.user.create({
         data: {
@@ -53,6 +56,7 @@ export const register = async (req: AuthRequest, res: Response): Promise<void> =
         createdAt: true,
       },
     })
+    console.log('User created:', user.id)
 
     if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_ADMIN_CHAT_ID) {
       try {
@@ -78,8 +82,8 @@ export const register = async (req: AuthRequest, res: Response): Promise<void> =
       res.status(400).json({ success: false, message: 'Validation error', errors: error.errors })
       return
     }
-    console.error('Register error:', error.message || error)
-    res.status(500).json({ success: false, message: 'Server error', error: error.message || 'Unknown error' })
+    console.error('Register error:', error?.message || error, error?.stack)
+    res.status(500).json({ success: false, message: 'Server error', details: error?.message || 'Unknown error' })
   }
 }
 
