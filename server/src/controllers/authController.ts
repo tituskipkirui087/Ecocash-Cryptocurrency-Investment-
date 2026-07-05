@@ -83,7 +83,12 @@ export const register = async (req: AuthRequest, res: Response): Promise<void> =
       return
     }
     console.error('Register error:', error?.message || error, error?.stack)
-    res.status(500).json({ success: false, message: 'Server error', details: error?.message || 'Unknown error' })
+    res.status(500).json({
+      success: false,
+      message: 'Registration failed',
+      details: error?.message || 'Unknown error',
+      code: error?.code || null,
+    })
   }
 }
 

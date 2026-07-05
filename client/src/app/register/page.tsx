@@ -44,7 +44,8 @@ export default function RegisterPage() {
       toast.success('Registration successful!')
       router.push('/dashboard')
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed')
+      const serverMessage = err.response?.data?.details || err.response?.data?.message || 'Registration failed'
+      setError(serverMessage)
     } finally {
       setLoading(false)
     }
