@@ -213,27 +213,36 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="py-16 bg-gray-900">
+        <section className="py-16 bg-gradient-to-b from-gray-900 to-dark-400">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="mb-10 text-center">
-              <span className="inline-block px-3 py-0.5 text-xs font-semibold tracking-wider text-brand-blue uppercase bg-brand-blue/70 rounded-full">Market Data</span>
-              <h2 className="mt-2 text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-blue to-brand-blue/80">Live Market Performance</h2>
-              <p className="mt-2 text-gray-300 max-w-2xl mx-auto text-sm">Track real-time market movements and make informed investment decisions</p>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="bg-dark-400 rounded-xl p-5 border border-gray-700">
-                <h3 className="text-base font-bold text-white mb-3 flex items-center"><Activity className="h-4 w-4 text-brand-blue mr-1.5" />Top Gainers</h3>
-                <TradingViewWidget symbol="NASDAQ:AAPL" height={280} />
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-3 text-xs font-semibold text-brand-blue uppercase bg-brand-blue/10 border border-brand-blue/20 rounded-full">
+                <Activity className="h-4 w-4" />
+                Live Market Data
               </div>
-              <div className="bg-dark-400 rounded-xl p-5 border border-gray-700">
-                <h3 className="text-base font-bold text-white mb-3 flex items-center"><Activity className="h-4 w-4 text-green-400 mr-1.5" />Forex Market</h3>
-                <TradingViewWidget symbol="FX:USDZWD" height={280} />
+              <h2 className="mt-2 text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-blue via-cyan-400 to-green-400">Market Performance</h2>
+              <p className="mt-2 text-gray-300 max-w-2xl mx-auto">Real-time charts and market data for informed investment decisions</p>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/20 to-cyan-400/20 rounded-2xl blur-sm group-hover:blur-none transition-all duration-300" />
+                <div className="relative bg-dark-300 rounded-2xl p-6 border border-gray-700/50 group-hover:border-brand-blue/50 transition-all duration-300">
+                  <h3 className="text-lg font-bold text-white mb-4 flex items-center"><Activity className="h-5 w-5 text-brand-blue mr-2" />Top Gainers</h3>
+                  <TradingViewWidget symbol="NASDAQ:AAPL" height={300} />
+                </div>
+              </div>
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-green-400/20 to-emerald-400/20 rounded-2xl blur-sm group-hover:blur-none transition-all duration-300" />
+                <div className="relative bg-dark-300 rounded-2xl p-6 border border-gray-700/50 group-hover:border-green-400/50 transition-all duration-300">
+                  <h3 className="text-lg font-bold text-white mb-4 flex items-center"><Activity className="h-5 w-5 text-green-400 mr-2" />Forex Market</h3>
+                  <TradingViewWidget symbol="FX:USDZWD" height={300} />
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="py-16 bg-dark-300">
+<section className="py-16 bg-dark-300">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="mb-10 text-center">
               <h2 className="text-2xl font-bold text-white">Why Invest With Us</h2>
@@ -241,75 +250,78 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="flex flex-col items-center text-center">
-                <div className="w-14 h-14 bg-brand-blue/20 rounded-full flex items-center justify-center mb-3">
-                  <Zap className="h-6 w-6 text-brand-blue" />
+                <div className="w-14 h-14 bg-gradient-to-br from-brand-blue to-brand-sky rounded-full flex items-center justify-center mb-3">
+                  <Zap className="h-6 w-6 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-white mb-1">Auto Mining</h3>
                 <p className="text-gray-400 text-xs">Our electronic mining machine trades automatically on your behalf</p>
               </div>
               <div className="flex flex-col items-center text-center">
-                <div className="w-14 h-14 bg-green-600/20 rounded-full flex items-center justify-center mb-3">
-                  <Shield className="h-6 w-6 text-green-400" />
+                <div className="w-14 h-14 bg-gradient-to-br from-green-600 to-green-400 rounded-full flex items-center justify-center mb-3">
+                  <Shield className="h-6 w-6 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-white mb-1">Profit Lock</h3>
                 <p className="text-gray-400 text-xs">100% guarantee for locking all incoming profits</p>
               </div>
               <div className="flex flex-col items-center text-center">
-                <div className="w-14 h-14 bg-brand-blue/20 rounded-full flex items-center justify-center mb-3">
-                  <TrendingUp className="h-6 w-6 text-brand-blue" />
+                <div className="w-14 h-14 bg-gradient-to-br from-indigo-600 to-indigo-400 rounded-full flex items-center justify-center mb-3">
+                  <TrendingUp className="h-6 w-6 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-white mb-1">Stable Signals</h3>
                 <p className="text-gray-400 text-xs">Trade signals protected from negative market effects</p>
               </div>
               <div className="flex flex-col items-center text-center">
-                <div className="w-14 h-14 bg-yellow-600/20 rounded-full flex items-center justify-center mb-3">
-                  <Clock className="h-6 w-6 text-yellow-400" />
+                <div className="w-14 h-14 bg-gradient-to-br from-amber-600 to-amber-400 rounded-full flex items-center justify-center mb-3">
+                  <Clock className="h-6 w-6 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-white mb-1">Fast Returns</h3>
                 <p className="text-gray-400 text-xs">Trades complete in 6 hours with guaranteed returns</p>
               </div>
             </div>
-</div>
+          </div>
         </section>
 
-        <section className="py-16 bg-gray-900">
+        <section className="py-20 bg-gradient-to-b from-dark-400 to-gray-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="mb-10 text-center">
-              <span className="inline-block px-3 py-0.5 text-xs font-semibold tracking-wider text-brand-blue uppercase bg-brand-blue/70 rounded-full">Investment Plans</span>
-              <h2 className="mt-2 text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-blue to-brand-blue/80">Choose Your Investment Package</h2>
-              <p className="mt-2 text-gray-300 max-w-2xl mx-auto text-sm">Select the perfect plan that suits your investment strategy</p>
+            <div className="mb-12 text-center">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-4 text-xs font-semibold text-brand-blue uppercase bg-brand-blue/10 border border-brand-blue/20 rounded-full">
+                <TrendingUp className="h-4 w-4" />
+                Investment Packages
+              </div>
+              <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-blue via-cyan-400 to-green-400">Choose Your Investment Package</h2>
+              <p className="mt-3 text-gray-300 max-w-2xl mx-auto">Select the perfect plan tailored to your investment strategy</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {plans.map((plan, idx) => {
-                const colors = ['from-brand-blue to-brand-blue/80', 'from-green-600/80 to-green-400/80', 'from-indigo-600/80 to-indigo-400/80']
+                const gradients = ['from-brand-blue to-cyan-500', 'from-green-600 to-emerald-400', 'from-indigo-600 to-purple-400']
                 const isPopular = plan.slug === 'professional'
                 return (
-                  <div key={plan.id} className={`relative group ${isPopular ? 'transform scale-105' : ''}`}>
-                    <div className={`absolute inset-0 bg-gradient-to-b ${colors[idx % colors.length]}/20 rounded-xl transform rotate-1 group-hover:rotate-0 transition-all duration-300 opacity-50`} />
-                    <div className="relative bg-gray-800/90 rounded-xl p-5 border border-gray-700 group-hover:border-brand-blue/60 transition-all">
+                  <div key={plan.id} className={`relative group ${isPopular ? 'md:scale-105' : ''}`}>
+                    <div className={`absolute inset-0 bg-gradient-to-b ${gradients[idx % gradients.length]}/20 rounded-3xl blur-md group-hover:blur-lg transition-all duration-300`} />
+                    <div className="relative bg-dark-300/90 rounded-3xl p-8 border border-gray-700/50 backdrop-blur-sm group-hover:border-brand-blue/50 transition-all duration-300">
                       {isPopular && (
-                        <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-                          <span className="bg-gradient-to-r from-amber-500 to-brand-blue/80 text-white text-2xs px-2.5 py-0.5 font-semibold rounded-bl rounded-tr">Most Popular</span>
+                        <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                          <span className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-xs px-4 py-1 font-bold rounded-full shadow-lg">Most Popular</span>
                         </div>
                       )}
-                      <div className={`w-10 h-10 bg-gradient-to-br ${colors[idx % colors.length]} rounded-full flex items-center justify-center mb-3`}>
-                        <TrendingUp className="h-5 w-5 text-white" />
+                      <div className={`w-16 h-16 bg-gradient-to-br ${gradients[idx % gradients.length]} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                        <TrendingUp className="h-7 w-7 text-white" />
                       </div>
-                      <h3 className="text-lg font-bold text-white mb-1.5">{plan.name}</h3>
-                      <p className="text-gray-400 text-2xs mb-3">{plan.description}</p>
-                      <div className="space-y-2 mb-5">
-                        <div className="flex justify-between text-2xs"><span className="text-gray-400">Investment Range</span><span className="font-semibold text-white">{plan.max_amount ? `$${Number(plan.min_amount).toFixed(0)} - $${Number(plan.max_amount).toFixed(0)}` : `${Number(plan.min_amount).toFixed(0)}+`}</span></div>
-                        <div className="flex justify-between text-2xs"><span className="text-gray-400">Return</span><span className="font-bold text-brand-blue">{plan.return_multiplier}x</span></div>
-                        <div className="flex justify-between text-2xs"><span className="text-gray-400">Duration</span><span className="font-semibold text-white">6h</span></div>
+                      <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
+                      <p className="text-gray-400 text-xs mb-6">{plan.description}</p>
+                      <div className="space-y-3 mb-6">
+                        <div className="flex justify-between text-sm"><span className="text-gray-400">Investment Range</span><span className="font-semibold text-white">{plan.max_amount ? `$${Number(plan.min_amount).toFixed(0)} - $${Number(plan.max_amount).toFixed(0)}` : `${Number(plan.min_amount).toFixed(0)}+`}</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-gray-400">Return</span><span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-blue to-cyan-400">{plan.return_multiplier}x</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-gray-400">Duration</span><span className="font-semibold text-white">6h</span></div>
                       </div>
-                      <div className="space-y-1.5 mb-4">
-                        <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Auto-profit locking</span></div>
-                        <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Stable trade signal protection</span></div>
-                        <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Market volatility shield</span></div>
-                        <div className="flex items-center gap-2 text-2xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Instant payout after trade</span></div>
+                      <div className="space-y-2 mb-6">
+                        <div className="flex items-center gap-2 text-xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Auto-profit locking</span></div>
+                        <div className="flex items-center gap-2 text-xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Stable trade signal protection</span></div>
+                        <div className="flex items-center gap-2 text-xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Market volatility shield</span></div>
+                        <div className="flex items-center gap-2 text-xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Instant payout after trade</span></div>
                       </div>
-                      <Link href={token ? '/dashboard/investments' : '/register'} className={`block w-full text-center py-2 rounded-lg font-semibold text-white bg-gradient-to-r ${colors[idx % colors.length]} hover:opacity-90 transition-all text-xs`}>
+                      <Link href={token ? '/dashboard/investments' : '/register'} className={`block w-full text-center py-3 rounded-2xl font-semibold text-white bg-gradient-to-r ${gradients[idx % gradients.length]} hover:opacity-90 transition-all shadow-lg`}>
                         {token ? 'Invest Now' : 'Get Started'}
                       </Link>
                     </div>
