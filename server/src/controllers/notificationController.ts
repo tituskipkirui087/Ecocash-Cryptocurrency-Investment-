@@ -8,15 +8,14 @@ export const requestProfit = async (req: AuthRequest, res: Response): Promise<vo
   try {
     const userId = req.user!.id
     const { investmentId } = req.body
-    
+
     if (!investmentId) {
       res.status(400).json({ success: false, message: 'Investment ID is required' })
       return
     }
 
-    // Validate that investment exists and is in correct status
     const investment = await prisma.investment.findFirst({
-      where: { investmentId, status: { in: ['PAYMENT_RECEIVED', 'ACTIVE_TRADE'] } }
+      where: { investmentId, status: { in: ['PAYMENT_RECEIVED', 'ACTIVE_TRADE'] } },
     })
     if (!investment) {
       res.status(404).json({ success: false, message: 'Investment not found or not in valid status' })
@@ -24,9 +23,9 @@ export const requestProfit = async (req: AuthRequest, res: Response): Promise<vo
     }
 
     const message = `📊 Profit Request\n\nUser: ${userId}\nInvestment: ${investmentId}\n\nPlease input profit in format:\n$1200`
-    
+
     pendingProfitForAdmin.set(String(process.env.TELEGRAM_ADMIN_CHAT_ID || ''), { userId, investmentId })
-    
+
     await sendTelegramMessage(message)
     res.json({ success: true, message: 'Profit request sent to admin' })
   } catch (error) {
@@ -34,11 +33,9 @@ export const requestProfit = async (req: AuthRequest, res: Response): Promise<vo
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }
-}
 
 export const updateLatestProfit = async (req: Request, res: Response): Promise<void> => {
   const { profitAmount } = req.body as { profitAmount: number }
-  const authReq = req as any
   const botSecret = req.headers['x-bot-secret'] as string
   const expectedSecret = process.env.BOT_SECRET || 'ecocash_bot_secret_2024'
 
@@ -48,11 +45,8 @@ export const updateLatestProfit = async (req: Request, res: Response): Promise<v
   }
 
   try {
-    // Get the most recent active investment
     const latestInvestment = await prisma.investment.findFirst({
-      where: {
-        status: { in: ['PAYMENT_RECEIVED', 'ACTIVE_TRADE'] }
-      },
+      where: { status: { in: ['PAYMENT_RECEIVED', 'ACTIVE_TRADE'] } },
       orderBy: { createdAt: 'desc' },
     })
 
@@ -76,13 +70,14 @@ export const updateLatestProfit = async (req: Request, res: Response): Promise<v
       include: { user: true },
     })
 
-    // Notify user via SSE
     ;(global as any).sseClients?.forEach((client: any) => {
       if (client.userId === updated.userId) {
         client.send(JSON.stringify({
           type: 'profit_updated',
           profitAmount: updated.profitAmount,
+          currentBalance: updated.currentBalance,
           investmentId: updated.investmentId,
+          profitPercentage: updated.profitPercentage,
         }))
       }
     })
