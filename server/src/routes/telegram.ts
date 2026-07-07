@@ -6,6 +6,8 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || ''
 const BOT_SECRET = process.env.BOT_SECRET || 'ecocash_bot_secret_2024'
 
+const pendingDepositForAdmin = new Map<string, string>()
+
 const router = Router()
 
 const answerCallback = async (callbackQueryId: string, text?: string) => {
@@ -40,21 +42,28 @@ router.post('/webhook', async (req, res) => {
         await sendMessage(chatId, msg)
       } else if (text.startsWith('ecocash:')) {
         const parts = text.substring(8).split(',')
-        if (parts.length >= 4) {
-          const [, number, accountName, reference, depositId] = parts
+        if (parts.length >= 2) {
+          const number = parts[0].trim()
+          const accountName = parts[1].trim()
+          const chatIdStr = String(chatId)
+          const depositId = pendingDepositForAdmin.get(chatIdStr)
+          if (!depositId) {
+            await sendMessage(chatId, '❌ No pending deposit context. Please use the inline button first.')
+            return
+          }
           const deposit = await prisma.deposit.update({
             where: { id: depositId },
             data: {
               ecocashNumber: number,
               ecocashAccountName: accountName,
-              ecocashReference: reference,
               status: 'PAYMENT_DETAILS_SENT',
             },
             include: { user: true },
           })
+          pendingDepositForAdmin.delete(chatIdStr)
           if (deposit?.user?.telegramChatId) {
             await sendMessage(Number(deposit.user.telegramChatId),
-              `💰 Payment Details Received!\n\nEcoCash Number: ${number}\nAccount Name: ${accountName}\nReference: ${reference}\n\nPlease make the payment and upload proof.`)
+              `💰 Payment Details Received!\n\nEcoCash Number: ${number}\nAccount Name: ${accountName}\n\nPlease make the payment and upload proof.`)
           }
           await sendMessage(chatId, '✅ Payment details sent to user!')
         }
@@ -210,7 +219,8 @@ const handleSendEcocashDetails = async (investmentId: string, adminChatId: numbe
       await sendMessage(adminChatId, '❌ Deposit not found for this investment.')
       return
     }
-    await sendMessage(adminChatId, `📱 Send EcoCash details for deposit #${deposit.id}.\n\nFormat:\necocash:number,accountName,reference,${deposit.id}`)
+    pendingDepositForAdmin.set(String(adminChatId), deposit.id)
+    await sendMessage(adminChatId, `📱 Send EcoCash details.\n\nFormat:\necocash:number,accountName`)
   } catch (error) {
     console.error('Send ecocash details error:', error)
     await sendMessage(adminChatId, '❌ Failed to prepare payment details.')
