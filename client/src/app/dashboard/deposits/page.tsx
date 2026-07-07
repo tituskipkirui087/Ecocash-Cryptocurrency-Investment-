@@ -57,20 +57,20 @@ export default function DepositsPage() {
           </thead>
           <tbody className="divide-y">
 {deposits.map((dep: any) => (
-               <tr key={dep.id} className="hover:bg-gray-50 transition-colors">
-                 <td className="px-5 py-3 text-sm text-gray-600">{new Date(dep.created_at).toLocaleDateString()}</td>
-                 <td className="px-5 py-3 text-sm font-medium text-gray-900">${Number(dep.amount).toLocaleString()}</td>
-                 <td className="px-5 py-3 text-sm text-gray-600">
-                   {dep.ecocash_number ? (
-                     <div>
-                       <p className="font-medium">{dep.ecocash_number}</p>
-                       <p className="text-xs text-gray-500">{dep.ecocash_account_name}</p>
-                       {dep.ecocash_reference && <p className="text-xs text-gray-500">Ref: {dep.ecocash_reference}</p>}
-                     </div>
-                   ) : (
-                     '-'
-                   )}
-                 </td>
+                <tr key={dep.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-5 py-3 text-sm text-gray-600">{new Date(dep.createdAt).toLocaleDateString()}</td>
+                  <td className="px-5 py-3 text-sm font-medium text-gray-900">${Number(dep.amount).toLocaleString()}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600">
+                    {dep.ecocashNumber ? (
+                      <div>
+                        <p className="font-medium">{dep.ecocashNumber}</p>
+                        <p className="text-xs text-gray-500">{dep.ecocashAccountName}</p>
+                        {dep.ecocashReference && <p className="text-xs text-gray-500">Ref: {dep.ecocashReference}</p>}
+                      </div>
+                    ) : (
+                      '-'
+                    )}
+                  </td>
                 <td className="px-5 py-3">
                   <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${statusColors[dep.status as DepositStatus]}`}>
                     {dep.status.replace(/_/g, ' ')}

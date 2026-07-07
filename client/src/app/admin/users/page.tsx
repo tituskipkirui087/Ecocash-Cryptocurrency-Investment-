@@ -59,7 +59,7 @@ export default function AdminUsersPage() {
   }
 
   const filteredUsers = users.filter((u) =>
-    `${u.first_name} ${u.last_name} ${u.email}`.toLowerCase().includes(search.toLowerCase())
+    `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -97,25 +97,25 @@ export default function AdminUsersPage() {
             <tbody className="divide-y">
               {filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{user.first_name} {user.last_name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{user.phone || '-'}</td>
-                  <td className="px-6 py-4 text-sm">
-                    <span className={`inline-block rounded-full px-2 py-1 text-xs ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {user.is_active ? 'Active' : 'Pending'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <span className={`inline-block rounded-full px-2 py-1 text-xs ${
-                      user.kyc_status === 'APPROVED' ? 'bg-green-100 text-green-800' : 
-                      user.kyc_status === 'SUBMITTED' ? 'bg-yellow-100 text-yellow-800' : 
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {user.kyc_status}
-                    </span>
-                  </td>
+                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</td>
+                   <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
+                   <td className="px-6 py-4 text-sm text-gray-600">{user.phone || '-'}</td>
+                   <td className="px-6 py-4 text-sm">
+                     <span className={`inline-block rounded-full px-2 py-1 text-xs ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                       {user.isActive ? 'Active' : 'Pending'}
+                     </span>
+                   </td>
+                   <td className="px-6 py-4 text-sm">
+                     <span className={`inline-block rounded-full px-2 py-1 text-xs ${
+                       user.kycStatus === 'APPROVED' ? 'bg-green-100 text-green-800' : 
+                       user.kycStatus === 'SUBMITTED' ? 'bg-yellow-100 text-yellow-800' : 
+                       'bg-gray-100 text-gray-800'
+                     }`}>
+                       {user.kycStatus}
+                     </span>
+                   </td>
                   <td className="px-6 py-4 flex gap-2">
-                    {!user.is_active && (
+                     {!user.isActive && (
                       <button
                         onClick={() => approveUser(user.id)}
                         className="flex items-center gap-1 rounded bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
@@ -124,7 +124,7 @@ export default function AdminUsersPage() {
                         Approve
                       </button>
                     )}
-                    {user.kyc_status === 'SUBMITTED' && (
+                    {user.kycStatus === 'SUBMITTED' && (
                       <>
                         <button
                           onClick={() => approveKyc(user.id)}

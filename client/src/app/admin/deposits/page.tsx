@@ -82,10 +82,10 @@ export default function AdminDepositsPage() {
             <tbody className="divide-y">
               {deposits.map((dep) => (
                 <tr key={dep.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-600">{new Date(dep.created_at).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{dep.user?.first_name} {dep.user?.last_name}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{new Date(dep.createdAt).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{dep.user?.firstName} {dep.user?.lastName}</td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">${Number(dep.amount).toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{dep.payment_method?.replace(/_/g, ' ')}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{dep.paymentMethod?.replace(/_/g, ' ')}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{dep.status?.replace(/_/g, ' ')}</td>
                   <td className="px-6 py-4 flex gap-2">
                     {dep.status === 'PAYMENT_SUBMITTED' && (

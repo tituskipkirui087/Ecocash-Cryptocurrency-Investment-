@@ -56,13 +56,13 @@ export default function AdminInvestmentsPage() {
             <tbody className="divide-y">
               {investments.map((inv) => {
                 const plan = inv.plan || {}
-                const profit = (inv.deposit_amount || 0) * (plan.return_multiplier || 1)
+                const profit = (inv.depositAmount || 0) * (plan.returnMultiplier || 1)
                 return (
                 <tr key={inv.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{inv.investment_id}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{inv.user?.first_name} {inv.user?.last_name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">${Number(inv.deposit_amount || 0).toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">${Number(inv.current_balance || 0).toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{inv.investmentId}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{inv.user?.firstName} {inv.user?.lastName}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">${Number(inv.depositAmount || 0).toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">${Number(inv.currentBalance || 0).toLocaleString()}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">+${Number(profit).toLocaleString()}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{inv.status?.replace(/_/g, ' ')}</td>
                   <td className="px-6 py-4">

@@ -41,9 +41,9 @@ function LoginForm() {
       const userData = data.data.user
       const mappedUser = {
         ...userData,
-        firstName: userData.firstName || userData.first_name,
-        lastName: userData.lastName || userData.last_name,
-        kycStatus: userData.kycStatus || userData.kyc_status,
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
+        kycStatus: userData.kycStatus || '',
         phone: userData.phone,
       }
       login(data.data.token, mappedUser)

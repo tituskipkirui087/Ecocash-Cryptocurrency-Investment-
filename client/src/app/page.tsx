@@ -12,10 +12,10 @@ type Plan = {
   name: string
   slug: string
   description: string
-  min_amount: number
-  max_amount: number | null
-  return_multiplier: number
-  trade_duration_hours: number
+  minAmount: number
+  maxAmount: number | null
+  returnMultiplier: number
+  tradeDurationHours: number
 }
 
 export default function Home() {
@@ -308,9 +308,9 @@ export default function Home() {
                       <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
                       <p className="text-gray-400 text-xs mb-6">{plan.description}</p>
                       <div className="space-y-3 mb-6">
-                        <div className="flex justify-between text-sm"><span className="text-gray-400">Investment Range</span><span className="font-semibold text-white">{plan.max_amount ? `$${Number(plan.min_amount).toFixed(0)} - $${Number(plan.max_amount).toFixed(0)}` : `${Number(plan.min_amount).toFixed(0)}+`}</span></div>
-                        <div className="flex justify-between text-sm"><span className="text-gray-400">Return</span><span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-blue to-cyan-400">{plan.return_multiplier}x</span></div>
-                        <div className="flex justify-between text-sm"><span className="text-gray-400">Duration</span><span className="font-semibold text-white">6h</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-gray-400">Investment Range</span><span className="font-semibold text-white">{plan.maxAmount ? `$${Number(plan.minAmount).toFixed(0)} - $${Number(plan.maxAmount).toFixed(0)}` : `${Number(plan.minAmount).toFixed(0)}+`}</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-gray-400">Return</span><span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-blue to-cyan-400">{plan.returnMultiplier}x</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-gray-400">Duration</span><span className="font-semibold text-white">{plan.tradeDurationHours || 6}h</span></div>
                       </div>
                       <div className="space-y-2 mb-6">
                         <div className="flex items-center gap-2 text-xs text-gray-400"><Check className="h-3.5 w-3.5 text-green-500" /><span>Auto-profit locking</span></div>
