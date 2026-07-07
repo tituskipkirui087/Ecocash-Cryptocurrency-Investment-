@@ -455,9 +455,10 @@ export default function InvestmentsPage() {
                     const file = e.target.files?.[0]
                     if (file) {
                       const form = new FormData()
+                      form.append('depositId', pendingPayment.depositId || '')
                       form.append('receipt', file)
                       try {
-                        await api.post(`deposits/${pendingPayment.depositId}/upload-receipt`, form)
+                        await api.post('deposits/upload-receipt', form)
                         toast.success('Payment proof submitted!')
                         setView('packages')
                         fetchInvestments()
