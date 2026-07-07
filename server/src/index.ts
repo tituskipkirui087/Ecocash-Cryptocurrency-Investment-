@@ -21,15 +21,23 @@ const allowedOrigins = [
   'https://ecocash-investment-copmanyzm.vercel.app',
   'https://ecocash-investment-copman-git-3d4518-tituskipkirui087s-projects.vercel.app',
   'https://ecocash-investment-copmany-gio1ysfg9-tituskipkirui087s-projects.vercel.app',
+  'https://ecocash-investment-copmany-bln1kwoq5-tituskipkirui087s-projects.vercel.app',
   process.env.FRONTEND_URL,
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:5173',
 ].filter(Boolean) as string[]
 
+const isAllowedOrigin = (origin?: string) => {
+  if (!origin) return true
+  if (allowedOrigins.includes(origin)) return true
+  if (origin.endsWith('.vercel.app') && (origin.includes('tituskipkirui087s-projects') || origin.includes('ecocash-investment'))) return true
+  return false
+}
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       callback(null, true)
       return
     }
