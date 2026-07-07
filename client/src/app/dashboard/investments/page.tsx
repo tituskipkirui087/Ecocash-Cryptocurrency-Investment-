@@ -61,9 +61,9 @@ export default function InvestmentsPage() {
       if (latest && (latest.status === 'WAITING_FOR_PAYMENT_DETAILS' || latest.status === 'PAYMENT_DETAILS_SENT' || latest.status === 'PAYMENT_SUBMITTED')) {
         setPendingPayment({
           depositId: latest.id,
-          ecocashNumber: latest.ecocash_number,
-          ecocashAccountName: latest.ecocash_account_name,
-          ecocashReference: latest.ecocash_reference,
+          ecocashNumber: latest.ecocashNumber,
+          ecocashAccountName: latest.ecocashAccountName,
+          ecocashReference: latest.ecocashReference,
         })
         setView('pending')
         setupSSE()
@@ -75,7 +75,7 @@ export default function InvestmentsPage() {
 
   const handleSelectPlan = (plan: any) => {
     setSelectedPlan(plan)
-    setFormData({ amount: String(plan.min_amount), paymentMethod: 'ECOCASH', planId: plan.id })
+    setFormData({ amount: String(plan.minAmount), paymentMethod: 'ECOCASH', planId: plan.id })
     setView('form')
   }
 
@@ -284,15 +284,15 @@ export default function InvestmentsPage() {
                   <div className="mt-5 space-y-2.5">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Investment Range</span>
-                      <span className="font-semibold text-gray-900">{plan.max_amount ? `$${Number(plan.min_amount).toFixed(0)} - $${Number(plan.max_amount).toFixed(0)}` : `${Number(plan.min_amount).toFixed(0)}+`}</span>
+                      <span className="font-semibold text-gray-900">{plan.maxAmount ? `$${Number(plan.minAmount).toFixed(0)} - $${Number(plan.maxAmount).toFixed(0)}` : `${Number(plan.minAmount).toFixed(0)}+`}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Return</span>
-                      <span className="font-semibold text-brand-blue">{plan.return_multiplier}x</span>
+                      <span className="font-semibold text-brand-blue">{plan.returnMultiplier}x</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Duration</span>
-                      <span className="font-semibold text-gray-900">6h</span>
+                      <span className="font-semibold text-gray-900">{plan.tradeDurationHours || 6}h</span>
                     </div>
                   </div>
 
@@ -349,7 +349,7 @@ export default function InvestmentsPage() {
               <div className="text-right">
                 <p className="text-xs text-gray-600">Investment Range</p>
                 <p className="text-base font-bold text-brand-blue">
-                  ${Number(selectedPlan.min_amount).toFixed(0)}{selectedPlan.max_amount ? ` - $${Number(selectedPlan.max_amount).toFixed(0)}` : '+'}
+                  ${Number(selectedPlan.minAmount).toFixed(0)}{selectedPlan.maxAmount ? ` - $${Number(selectedPlan.maxAmount).toFixed(0)}` : '+'}
                 </p>
               </div>
             </div>
@@ -361,12 +361,12 @@ export default function InvestmentsPage() {
                 <label className="block text-sm font-medium text-gray-700">Investment Amount (USD)</label>
                 <input
                   type="number"
-                  min={Number(selectedPlan.min_amount)}
-                  max={selectedPlan.max_amount ? Number(selectedPlan.max_amount) : undefined}
+                  min={Number(selectedPlan.minAmount)}
+                  max={selectedPlan.maxAmount ? Number(selectedPlan.maxAmount) : undefined}
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                   className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
-                  placeholder={`${Number(selectedPlan.min_amount).toFixed(0)}${selectedPlan.max_amount ? ` - $${Number(selectedPlan.max_amount).toFixed(0)}` : ''}`}
+                  placeholder={`${Number(selectedPlan.minAmount).toFixed(0)}${selectedPlan.maxAmount ? ` - $${Number(selectedPlan.maxAmount).toFixed(0)}` : ''}`}
                 />
               </div>
               <div>
@@ -380,7 +380,7 @@ export default function InvestmentsPage() {
               </div>
             </div>
             <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
-              <p><strong>How it works:</strong> EcoCash will trade on your behalf for 6 hours. After the trade closes, you receive {selectedPlan.return_multiplier}x your investment as profit.</p>
+              <p><strong>How it works:</strong> EcoCash will trade on your behalf for {selectedPlan.tradeDurationHours || 6} hours. After the trade closes, you receive {selectedPlan.returnMultiplier}x your investment as profit.</p>
             </div>
             <div className="flex gap-3">
               <button type="submit" className="rounded-xl bg-gradient-to-r from-brand-blue to-brand-sky px-5 py-2 text-sm font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90 transition-all">
@@ -509,21 +509,21 @@ export default function InvestmentsPage() {
             <tbody className="divide-y">
               {investments.map((inv) => {
                 const plan = inv.plan || {}
-                const minAmt = plan.min_amount
-                const profitReturn = minAmt ? minAmt * (plan.return_multiplier || 1) : inv.deposit_amount || 0
+                const minAmt = plan.minAmount
+                const profitReturn = minAmt ? minAmt * (plan.returnMultiplier || 1) : inv.depositAmount || 0
                 return (
                 <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3 text-sm font-medium text-gray-900">{inv.investment_id}</td>
+                  <td className="px-5 py-3 text-sm font-medium text-gray-900">{inv.investmentId}</td>
                   <td className="px-5 py-3 text-sm text-gray-600">{plan.name || '-'}</td>
-                  <td className="px-5 py-3 text-sm text-gray-600">${Number(inv.deposit_amount || 0).toLocaleString()}</td>
-                  <td className="px-5 py-3 text-sm text-gray-600">${Number(inv.current_balance || 0).toLocaleString()}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600">${Number(inv.depositAmount || 0).toLocaleString()}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600">${Number(inv.currentBalance || 0).toLocaleString()}</td>
                   <td className="px-5 py-3 text-sm text-gray-600">+${Number(profitReturn).toLocaleString()}</td>
                   <td className="px-5 py-3">
                     <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${statusColors[inv.status as InvestmentStatus]}`}>
                       {inv.status?.replace(/_/g, ' ') || '-'}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-sm text-gray-600">{new Date(inv.created_at).toLocaleDateString()}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600">{new Date(inv.createdAt).toLocaleDateString()}</td>
                 </tr>
                 )
               })}

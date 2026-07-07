@@ -67,6 +67,7 @@ export default function ProfilePage() {
       console.error('Failed to fetch profile:', err)
     }
   }
+  }
 
   useEffect(() => {
     if (user?.kycStatus === 'APPROVED' && !showKycConfirmed) {
@@ -118,7 +119,7 @@ export default function ProfilePage() {
     try {
       const response = await api.put('auth/profile', formData)
       const userData = response.data.data || response.data
-      updateUser({ ...user, ...userData, firstName: userData.first_name, lastName: userData.last_name } as any)
+      updateUser({ ...user, ...userData, firstName: userData.firstName, lastName: userData.lastName } as any)
       toast.success('Profile updated successfully')
     } catch (err: any) {
       toast.error(err.response?.data?.message || err.message || 'Failed to update profile')
