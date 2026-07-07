@@ -114,9 +114,8 @@ export default function InvestmentsPage() {
   const setupSSE = () => {
     const token = localStorage.getItem('token')
     if (!token) return
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
-    const baseUrl = apiUrl.replace(/\/api$/, '').replace(/\/api$/, '')
-    const sseUrl = `${baseUrl}/sse/payment-updates?token=${token}`
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+    const sseUrl = `${apiUrl.replace(/\/$/, '')}/sse/payment-updates?token=${token}`
     console.log('Setting up SSE connection:', sseUrl)
     const source = new EventSource(sseUrl)
     source.onopen = () => console.log('SSE connected')
@@ -143,6 +142,14 @@ export default function InvestmentsPage() {
           clearInterval(pollIntervalRef.current)
           pollIntervalRef.current = null
         }
+      }
+      if (data.type === 'profit_updated') {
+        setInvestments(prev => prev.map(inv => 
+          inv.investmentId === data.investmentId 
+            ? { ...inv, profitAmount: data.profitAmount, currentBalance: data.currentBalance, profitPercentage: data.profitPercentage }
+            : inv
+        ))
+        toast.success(`Profit updated: +$${data.profitAmount.toFixed(2)}`)
       }
     }
     setEventSource(source)
@@ -518,7 +525,25 @@ export default function InvestmentsPage() {
                   <td className="px-5 py-3 text-sm text-gray-600">{plan.name || '-'}</td>
                   <td className="px-5 py-3 text-sm text-gray-600">${Number(inv.depositAmount || 0).toLocaleString()}</td>
                   <td className="px-5 py-3 text-sm text-gray-600">${Number(inv.currentBalance || 0).toLocaleString()}</td>
-                  <td className="px-5 py-3 text-sm text-gray-600">+${Number(profitReturn).toLocaleString()}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono whitespace-nowrap">${(
+                        inv.profitAmount ?? Number(inv.depositAmount) * (inv.plan?.returnMultiplier || 1)
+                      ).toLocaleString()}</span>
+                      <button
+                        onClick={() => {
+                          api.post('/notifications/profit-request', { investmentId: inv.investmentId })
+                            .then(() => toast.success('Profit request sent to admin!'))
+                            .catch((err) => toast.error(err.response?.data?.message || 'Failed to send request'))
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand-blue/10 text-brand-blue hover:bg-brand-blue/20 transition-all text-[10px] font-medium"
+                        title="Request profit update from admin"
+                      >
+                        <TrendingUp className="h-3 w-3" />
+                        Track
+                      </button>
+                    </div>
+                  </td>
                   <td className="px-5 py-3">
                     <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${statusColors[inv.status as InvestmentStatus]}`}>
                       {inv.status?.replace(/_/g, ' ') || '-'}

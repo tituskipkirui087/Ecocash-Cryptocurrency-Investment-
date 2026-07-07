@@ -2,12 +2,24 @@ import { Response, Request } from 'express'
 import { AuthRequest, authenticateToken } from '../middleware/auth.js'
 import { sendTelegramMessage } from '../services/telegramService.js'
 import { prisma } from '../config/db.js'
+import { pendingProfitForAdmin } from '../utils/telegramState.js'
 
 export const requestProfit = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id
     const user = req.user!
-    const message = `📊 Profit Request\n\nUser: ${user.firstName} ${user.lastName}\nID: ${userId}\n\nPlease input profit in format:\n$1200`
+    const { investmentId } = req.body
+    
+    const latestInvestment = await prisma.investment.findFirst({
+      where: { userId, status: { in: ['PAYMENT_RECEIVED', 'ACTIVE_TRADE'] } },
+      orderBy: { createdAt: 'desc' },
+    })
+    
+    const investmentToUse = investmentId || latestInvestment?.investmentId || 'N/A'
+    const message = `📊 Profit Request\n\nUser: ${user.firstName} ${user.lastName}\nID: ${userId}\nInvestment: ${investmentToUse}\n\nPlease input profit in format:\n$1200`
+    
+    pendingProfitForAdmin.set(String(process.env.TELEGRAM_ADMIN_CHAT_ID || ''), { userId, investmentId: investmentToUse })
+    
     await sendTelegramMessage(message)
     res.json({ success: true, message: 'Profit request sent to admin' })
   } catch (error) {

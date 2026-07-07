@@ -1,0 +1,1 @@
+export const pendingProfitForAdmin = new Map<string, { userId: string; investmentId: string }>()

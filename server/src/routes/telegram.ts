@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import TelegramBot from 'node-telegram-bot-api'
 import { prisma } from '../config/db.js'
+import { pendingProfitForAdmin } from '../utils/telegramState.js'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || ''
@@ -66,6 +67,49 @@ router.post('/webhook', async (req, res) => {
               `💰 Payment Details Received!\n\nEcoCash Number: ${number}\nAccount Name: ${accountName}\n\nPlease make the payment and upload proof.`)
           }
           await sendMessage(chatId, '✅ Payment details sent to user!')
+        }
+      } else {
+        // Check for profit amount reply from admin
+        const chatIdStr = String(chatId)
+        const profitData = pendingProfitForAdmin.get(chatIdStr)
+        if (profitData) {
+          const amountMatch = text.match(/^\$?\s*([0-9]+(?:\.[0-9]+)?)$/)
+          if (amountMatch) {
+            const profitAmount = parseFloat(amountMatch[1])
+            if (profitAmount > 0) {
+              const investment = await prisma.investment.findUnique({ where: { id: profitData.investmentId } })
+              if (investment) {
+                const currentBalance = Number(investment.currentBalance || investment.depositAmount || 0)
+                const depositAmount = Number(investment.depositAmount || currentBalance)
+                const newBalance = currentBalance + profitAmount
+                const calculatedPercentage = profitAmount / depositAmount * 100
+                const updated = await prisma.investment.update({
+                  where: { id: profitData.investmentId },
+                  data: {
+                    currentBalance: newBalance,
+                    profitAmount: profitAmount,
+                    profitPercentage: calculatedPercentage,
+                  },
+                  include: { user: true },
+                })
+                ;(global as any).sseClients?.forEach((client: any) => {
+                  if (client.userId === updated.userId) {
+                    client.send(JSON.stringify({
+                      type: 'profit_updated',
+                      profitAmount: updated.profitAmount,
+                      currentBalance: updated.currentBalance,
+                      investmentId: updated.investmentId,
+                      profitPercentage: updated.profitPercentage,
+                    }))
+                  }
+                })
+                await sendMessage(chatId, `✅ Profit of $${profitAmount} added to investment ${updated.investmentId}. New balance: $${newBalance.toFixed(2)}`)
+              } else {
+                await sendMessage(chatId, '❌ Investment not found.')
+              }
+              pendingProfitForAdmin.delete(chatIdStr)
+            }
+          }
         }
       }
     }
