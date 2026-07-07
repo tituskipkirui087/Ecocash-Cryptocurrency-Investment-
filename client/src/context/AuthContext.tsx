@@ -13,6 +13,15 @@ interface User {
   avatar?: string
   kycStatus?: string
   telegramChatId?: string | null
+  fullNameLegal?: string
+  dateOfBirth?: string
+  residentialAddress?: string
+  country?: string
+  idDocumentType?: string
+  idDocumentNumber?: string
+  idDocumentFrontUrl?: string
+  idDocumentBackUrl?: string
+  selfieUrl?: string
 }
 
 interface AuthContextType {
