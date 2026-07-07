@@ -62,6 +62,17 @@ router.post('/webhook', async (req, res) => {
             include: { user: true },
           })
           pendingDepositForAdmin.delete(chatIdStr)
+          ;(global as any).sseClients?.forEach((client: any) => {
+            if (client.userId === deposit.userId) {
+              client.send(JSON.stringify({
+                type: 'payment_details',
+                depositId: deposit.id,
+                ecocashNumber: number,
+                ecocashAccountName: accountName,
+                ecocashReference: deposit.ecocashReference,
+              }))
+            }
+          })
           if (deposit?.user?.telegramChatId) {
             await sendMessage(Number(deposit.user.telegramChatId),
               `💰 Payment Details Received!\n\nEcoCash Number: ${number}\nAccount Name: ${accountName}\n\nPlease make the payment and upload proof.`)
@@ -288,6 +299,15 @@ const handleApproveDeposit = async (depositId: string, adminChatId: number) => {
       await sendMessage(Number(deposit.user.telegramChatId),
         `✅ Payment confirmed! Your investment is now active.\n\nInvestment: #${deposit.investment?.investmentId || 'N/A'}`)
     }
+    ;(global as any).sseClients?.forEach((client: any) => {
+      if (client.userId === deposit.userId) {
+        client.send(JSON.stringify({
+          type: 'payment_approved',
+          status: 'PAYMENT_RECEIVED',
+          depositId: deposit.id,
+        }))
+      }
+    })
     await sendMessage(adminChatId, '✅ Payment approved and user notified!')
   } catch (error) {
     console.error('Approve deposit error:', error)

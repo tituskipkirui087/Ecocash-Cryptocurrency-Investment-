@@ -146,6 +146,7 @@ export const updateDepositStatus = async (req: AuthRequest, res: Response): Prom
         console.log('Sending payment details to user via SSE')
         client.send(JSON.stringify({
           type: 'payment_details',
+          depositId: updatedDeposit.id,
           ecocashNumber: validated.ecocashNumber,
           ecocashAccountName: validated.ecocashAccountName,
           ecocashReference: validated.ecocashReference,
@@ -197,6 +198,7 @@ export const approveDeposit = async (req: AuthRequest, res: Response): Promise<v
         client.send(JSON.stringify({
           type: 'payment_approved',
           status: 'PAYMENT_RECEIVED',
+          depositId: updatedDeposit.id,
         }))
       }
     })

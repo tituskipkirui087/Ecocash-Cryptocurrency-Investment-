@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
@@ -15,6 +15,10 @@ type PendingPayment = {
   ecocashReference: string | null
 }
 
+type PaymentDetailsUpdate = Partial<PendingPayment> & {
+  depositId?: string | null
+}
+
 export default function InvestmentsPage() {
   const [view, setView] = useState<'packages' | 'history' | 'form' | 'pending'>('packages')
   const [plans, setPlans] = useState<any[]>([])
@@ -23,8 +27,9 @@ export default function InvestmentsPage() {
   const [selectedPlan, setSelectedPlan] = useState<any | null>(null)
   const [formData, setFormData] = useState({ amount: '', paymentMethod: 'ECOCASH', planId: '' })
   const [pendingPayment, setPendingPayment] = useState<PendingPayment | null>(null)
-  const [eventSource, setEventSource] = useState<EventSource | null>(null)
+  const eventSourceRef = useRef<EventSource | null>(null)
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const pendingPaymentRef = useRef<PendingPayment | null>(null)
   const toastShownRef = useRef({ details: false, approved: false })
 
   useEffect(() => {
@@ -32,6 +37,10 @@ export default function InvestmentsPage() {
     fetchInvestments()
     checkPendingDeposit()
   }, [])
+
+  useEffect(() => {
+    pendingPaymentRef.current = pendingPayment
+  }, [pendingPayment])
 
   const fetchPlans = async () => {
     try {
@@ -54,17 +63,44 @@ export default function InvestmentsPage() {
     }
   }
 
+  const applyPaymentDetails = useCallback((details: PaymentDetailsUpdate) => {
+    setPendingPayment((prev) => {
+      if (details.depositId && prev?.depositId && details.depositId !== prev.depositId) {
+        return prev
+      }
+
+      const next: PendingPayment = {
+        depositId: details.depositId ?? prev?.depositId ?? null,
+        ecocashNumber: details.ecocashNumber ?? prev?.ecocashNumber ?? null,
+        ecocashAccountName: details.ecocashAccountName ?? prev?.ecocashAccountName ?? null,
+        ecocashReference: details.ecocashReference ?? prev?.ecocashReference ?? null,
+      }
+      pendingPaymentRef.current = next
+      return next
+    })
+    setView('pending')
+  }, [])
+
+  const notifyPaymentDetailsReceived = useCallback(() => {
+    if (!toastShownRef.current.details) {
+      toastShownRef.current.details = true
+      toast.success('Payment details received!')
+    }
+  }, [])
+
   const checkPendingDeposit = async () => {
     try {
       const { data } = await api.get('deposits')
       const latest = data.data?.[0]
       if (latest && (latest.status === 'WAITING_FOR_PAYMENT_DETAILS' || latest.status === 'PAYMENT_DETAILS_SENT' || latest.status === 'PAYMENT_SUBMITTED')) {
-        setPendingPayment({
+        const payment = {
           depositId: latest.id,
           ecocashNumber: latest.ecocashNumber,
           ecocashAccountName: latest.ecocashAccountName,
           ecocashReference: latest.ecocashReference,
-        })
+        }
+        setPendingPayment(payment)
+        pendingPaymentRef.current = payment
         setView('pending')
         setupSSE()
       }
@@ -89,12 +125,14 @@ export default function InvestmentsPage() {
       })
       const { investment, depositId } = data.data
       
-      setPendingPayment({
+      const payment = {
         depositId: depositId,
         ecocashNumber: null,
         ecocashAccountName: null,
         ecocashReference: null,
-      })
+      }
+      setPendingPayment(payment)
+      pendingPaymentRef.current = payment
       
       setupSSE()
       
@@ -114,30 +152,35 @@ export default function InvestmentsPage() {
   const setupSSE = () => {
     const token = localStorage.getItem('token')
     if (!token) return
+    if (eventSourceRef.current && eventSourceRef.current.readyState !== 2) return
+
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
     const sseUrl = `${apiUrl.replace(/\/$/, '')}/sse/payment-updates?token=${token}`
     console.log('Setting up SSE connection:', sseUrl)
     const source = new EventSource(sseUrl)
+    eventSourceRef.current = source
     source.onopen = () => console.log('SSE connected')
-    source.onerror = (e) => console.error('SSE error:', e)
+    source.onerror = (e) => {
+      console.error('SSE error:', e)
+    }
     source.onmessage = (e) => {
-      console.log('SSE message received:', JSON.parse(e.data))
       const data = JSON.parse(e.data)
-      if (data.type === 'payment_details' && !toastShownRef.current.details) {
-        toastShownRef.current.details = true
-        setPendingPayment((prev) => prev ? {
-          ...prev,
+      console.log('SSE message received:', data)
+      if (data.type === 'payment_details') {
+        applyPaymentDetails({
+          depositId: data.depositId,
           ecocashNumber: data.ecocashNumber,
           ecocashAccountName: data.ecocashAccountName,
           ecocashReference: data.ecocashReference,
-        } : null)
-        setView('pending')
-        toast.success('Payment details received!')
+        })
+        notifyPaymentDetailsReceived()
       }
       if (data.type === 'payment_approved' && !toastShownRef.current.approved) {
         toastShownRef.current.approved = true
         toast.success('Payment approved! Your investment is now active.')
         setView('packages')
+        setPendingPayment(null)
+        pendingPaymentRef.current = null
         fetchInvestments()
         if (pollIntervalRef.current) {
           clearInterval(pollIntervalRef.current)
@@ -153,30 +196,36 @@ export default function InvestmentsPage() {
         toast.success(`Profit updated: +$${data.profitAmount.toFixed(2)}`)
       }
     }
-    setEventSource(source)
     
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = null
+    }
+
     pollIntervalRef.current = setInterval(async () => {
       try {
         const { data } = await api.get('deposits')
         const latest = data.data?.[0]
-        if (latest?.ecocashNumber && !pendingPayment?.ecocashNumber) {
-          setPendingPayment({
+        const current = pendingPaymentRef.current
+        const isCurrentDeposit = !current?.depositId || current.depositId === latest?.id
+
+        if (latest?.ecocashNumber && isCurrentDeposit && !current?.ecocashNumber) {
+          applyPaymentDetails({
             depositId: latest.id,
             ecocashNumber: latest.ecocashNumber,
             ecocashAccountName: latest.ecocashAccountName,
             ecocashReference: latest.ecocashReference,
           })
-          if (!toastShownRef.current.details) {
-            toastShownRef.current.details = true
-            toast.success('Payment details received!')
-          }
+          notifyPaymentDetailsReceived()
         }
-        if (latest?.status === 'PAYMENT_RECEIVED' && pendingPayment?.depositId) {
+        if (latest?.status === 'PAYMENT_RECEIVED' && isCurrentDeposit) {
           if (!toastShownRef.current.approved) {
             toastShownRef.current.approved = true
             toast.success('Payment approved! Your investment is now active.')
           }
           setView('packages')
+          setPendingPayment(null)
+          pendingPaymentRef.current = null
           fetchInvestments()
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current)
@@ -186,18 +235,21 @@ export default function InvestmentsPage() {
       } catch (err) {
         console.error('Polling error:', err)
       }
-    }, 5000)
+    }, 2000)
   }
 
   useEffect(() => {
     return () => {
-      if (eventSource) eventSource.close()
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+        eventSourceRef.current = null
+      }
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current)
         pollIntervalRef.current = null
       }
     }
-  }, [eventSource])
+  }, [])
 
   const statusColors: Record<InvestmentStatus, string> = {
     PENDING: 'bg-gray-100 text-gray-800 border border-gray-200',
