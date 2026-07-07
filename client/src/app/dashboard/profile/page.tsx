@@ -67,7 +67,6 @@ export default function ProfilePage() {
       console.error('Failed to fetch profile:', err)
     }
   }
-  }
 
   useEffect(() => {
     if (user?.kycStatus === 'APPROVED' && !showKycConfirmed) {
