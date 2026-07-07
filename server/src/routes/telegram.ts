@@ -1,20 +1,20 @@
 import { Router } from 'express'
-import { createClient } from '@supabase/supabase-js'
 import TelegramBot from 'node-telegram-bot-api'
+import { prisma } from '../config/db.js'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || ''
 const BOT_SECRET = process.env.BOT_SECRET || 'ecocash_bot_secret_2024'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || ''
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || 
-                   process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-const supabase = supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
-
 const router = Router()
 
 router.post('/webhook', async (req, res) => {
   try {
+    const secret = (req.query.secret as string) || (req.headers['x-bot-secret'] as string)
+    if (secret !== BOT_SECRET) {
+      return res.sendStatus(401)
+    }
+
     const body = req.body
 
     if (body.message && body.message.text) {
@@ -24,37 +24,34 @@ router.post('/webhook', async (req, res) => {
       if (text === '/start') {
         await sendMessage(chatId, 'Welcome to EcoCash Investment Bot\n\nCommands:\n/pending - View pending actions\n/users - List all users\n/investments - List investments')
       } else if (text === '/pending') {
-        const { data: pending } = supabase
-          ? await supabase.from('deposits').select('*, user:users(*)').eq('status', 'WAITING_FOR_PAYMENT_DETAILS').limit(5)
-          : { data: null }
-        const msg = pending?.length 
+        const pending = await prisma.deposit.findMany({
+          where: { status: 'WAITING_FOR_PAYMENT_DETAILS' },
+          include: { user: true },
+          take: 5,
+        })
+        const msg = pending.length
           ? `Pending Approvals:\n${pending.map((d: any) => `- ${d.user?.email}: $${d.amount}`).join('\n')}`
           : 'No pending actions.'
         await sendMessage(chatId, msg)
       } else if (text.startsWith('ecocash:')) {
-        // Format: ecocash:number,accountName,reference,depositId
         const parts = text.substring(8).split(',')
         if (parts.length >= 4) {
           const [, number, accountName, reference, depositId] = parts
-          if (supabase) {
-            const { data: deposit } = await supabase
-              .from('deposits')
-              .update({
-                ecocash_number: number,
-                ecocash_account_name: accountName,
-                ecocash_reference: reference,
-                status: 'PAYMENT_DETAILS_SENT'
-              })
-              .eq('id', depositId)
-              .select('*, user:users(*)')
-              .single()
-            
-            if (deposit?.user?.telegram_chat_id) {
-              await sendMessage(Number(deposit.user.telegram_chat_id), 
-                `💰 Payment Details Received!\n\nEcoCash Number: ${number}\nAccount Name: ${accountName}\nReference: ${reference}\n\nPlease make the payment and upload proof.`)
-            }
-            await sendMessage(chatId, '✅ Payment details sent to user!')
+          const deposit = await prisma.deposit.update({
+            where: { id: depositId },
+            data: {
+              ecocashNumber: number,
+              ecocashAccountName: accountName,
+              ecocashReference: reference,
+              status: 'PAYMENT_DETAILS_SENT',
+            },
+            include: { user: true },
+          })
+          if (deposit?.user?.telegramChatId) {
+            await sendMessage(Number(deposit.user.telegramChatId),
+              `💰 Payment Details Received!\n\nEcoCash Number: ${number}\nAccount Name: ${accountName}\nReference: ${reference}\n\nPlease make the payment and upload proof.`)
           }
+          await sendMessage(chatId, '✅ Payment details sent to user!')
         }
       }
     }
@@ -64,7 +61,6 @@ router.post('/webhook', async (req, res) => {
       const callbackData = callbackQuery.data
       const chatId = callbackQuery.message.chat.id
 
-      // Handle all callback actions
       if (callbackData.startsWith('approve_user_')) {
         const userId = callbackData.replace('approve_user_', '')
         await handleApproveUser(userId, chatId)
@@ -128,17 +124,13 @@ const sendMessage = async (chatId: number, text: string) => {
 }
 
 const handleApproveUser = async (userId: string, adminChatId: number) => {
-  if (!supabase) return
   try {
-    const { data: user } = await supabase
-      .from('users')
-      .update({ is_active: true })
-      .eq('id', userId)
-      .select()
-      .single()
-    
-    if (user?.telegram_chat_id) {
-      await sendMessage(Number(user.telegram_chat_id), 
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { isActive: true },
+    })
+    if (user?.telegramChatId) {
+      await sendMessage(Number(user.telegramChatId),
         `🎉 Congratulations! Your account has been approved. You can now log in and start investing.`)
     }
     await sendMessage(adminChatId, '✅ User approved and notified!')
@@ -153,17 +145,13 @@ const handleRejectUser = async (userId: string, adminChatId: number) => {
 }
 
 const handleApproveKYC = async (userId: string, adminChatId: number) => {
-  if (!supabase) return
   try {
-    const { data: user } = await supabase
-      .from('users')
-      .update({ kyc_status: 'APPROVED', is_verified: true })
-      .eq('id', userId)
-      .select()
-      .single()
-    
-    if (user?.telegram_chat_id) {
-      await sendMessage(Number(user.telegram_chat_id), 
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { kycStatus: 'APPROVED', isVerified: true, isActive: true },
+    })
+    if (user?.telegramChatId) {
+      await sendMessage(Number(user.telegramChatId),
         `✅ KYC Approved! Your account is now fully verified and you can make investments.`)
     }
     await sendMessage(adminChatId, '✅ KYC approved and notified!')
@@ -174,17 +162,13 @@ const handleApproveKYC = async (userId: string, adminChatId: number) => {
 }
 
 const handleRejectKYC = async (userId: string, adminChatId: number) => {
-  if (!supabase) return
   try {
-    const { data: user } = await supabase
-      .from('users')
-      .update({ kyc_status: 'REJECTED' })
-      .eq('id', userId)
-      .select()
-      .single()
-    
-    if (user?.telegram_chat_id) {
-      await sendMessage(Number(user.telegram_chat_id), 
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { kycStatus: 'REJECTED' },
+    })
+    if (user?.telegramChatId) {
+      await sendMessage(Number(user.telegramChatId),
         `❌ Your KYC submission was rejected. Please check your documents and resubmit.`)
     }
     await sendMessage(adminChatId, '✅ KYC rejected and notified!')
@@ -195,25 +179,21 @@ const handleRejectKYC = async (userId: string, adminChatId: number) => {
 }
 
 const handleApproveDeposit = async (depositId: string, adminChatId: number) => {
-  if (!supabase) return
   try {
-    const { data: deposit } = await supabase
-      .from('deposits')
-      .update({ status: 'PAYMENT_RECEIVED' })
-      .eq('id', depositId)
-      .select('*, user:users(*), investments(*)')
-      .single()
-    
-    if (deposit?.investment_id) {
-      await supabase
-        .from('investments')
-        .update({ status: 'PAYMENT_RECEIVED' })
-        .eq('id', deposit.investment_id)
+    const deposit = await prisma.deposit.update({
+      where: { id: depositId },
+      data: { status: 'PAYMENT_RECEIVED' },
+      include: { user: true, investment: true },
+    })
+    if (deposit?.investmentId) {
+      await prisma.investment.update({
+        where: { id: deposit.investmentId },
+        data: { status: 'PAYMENT_RECEIVED' },
+      })
     }
-    
-    if (deposit?.user?.telegram_chat_id) {
-      await sendMessage(Number(deposit.user.telegram_chat_id), 
-        `✅ Payment confirmed! Your investment is now active.\n\nInvestment: #${deposit.investments?.[0]?.investment_id || 'N/A'}`)
+    if (deposit?.user?.telegramChatId) {
+      await sendMessage(Number(deposit.user.telegramChatId),
+        `✅ Payment confirmed! Your investment is now active.\n\nInvestment: #${deposit.investment?.investmentId || 'N/A'}`)
     }
     await sendMessage(adminChatId, '✅ Payment approved and user notified!')
   } catch (error) {
@@ -223,24 +203,20 @@ const handleApproveDeposit = async (depositId: string, adminChatId: number) => {
 }
 
 const handleRejectDeposit = async (depositId: string, adminChatId: number) => {
-  if (!supabase) return
   try {
-    const { data: deposit } = await supabase
-      .from('deposits')
-      .update({ status: 'REJECTED' })
-      .eq('id', depositId)
-      .select('*, user:users(*), investments(*)')
-      .single()
-    
-    if (deposit?.investment_id) {
-      await supabase
-        .from('investments')
-        .update({ status: 'REJECTED' })
-        .eq('id', deposit.investment_id)
+    const deposit = await prisma.deposit.update({
+      where: { id: depositId },
+      data: { status: 'REJECTED' },
+      include: { user: true, investment: true },
+    })
+    if (deposit?.investmentId) {
+      await prisma.investment.update({
+        where: { id: deposit.investmentId },
+        data: { status: 'REJECTED' },
+      })
     }
-    
-    if (deposit?.user?.telegram_chat_id) {
-      await sendMessage(Number(deposit.user.telegram_chat_id), 
+    if (deposit?.user?.telegramChatId) {
+      await sendMessage(Number(deposit.user.telegramChatId),
         `❌ Your payment was rejected. Please contact support for assistance.`)
     }
     await sendMessage(adminChatId, '✅ Payment rejected and user notified!')
@@ -251,29 +227,28 @@ const handleRejectDeposit = async (depositId: string, adminChatId: number) => {
 }
 
 const handleStartTrade = async (investmentId: string, adminChatId: number) => {
-  if (!supabase) return
   try {
-    const { data: investment } = await supabase
-      .from('investments')
-      .select('*, plan:investment_plans(*), user:users(*)')
-      .eq('id', investmentId)
-      .single()
-    
+    const investment = await prisma.investment.findUnique({
+      where: { id: investmentId },
+      include: { plan: true, user: true },
+    })
+    if (!investment) throw new Error('Investment not found')
+
     const tradeStart = new Date()
-    const tradeEnd = new Date(tradeStart.getTime() + (investment.plan?.trade_duration_hours || 6) * 60 * 60 * 1000)
-    
-    await supabase
-      .from('investments')
-      .update({
+    const tradeEnd = new Date(tradeStart.getTime() + (investment.plan?.tradeDurationHours || 6) * 60 * 60 * 1000)
+
+    await prisma.investment.update({
+      where: { id: investmentId },
+      data: {
         status: 'ACTIVE_TRADE',
-        trade_start_date: tradeStart.toISOString(),
-        trade_end_date: tradeEnd.toISOString()
-      })
-      .eq('id', investmentId)
-    
-    if (investment.user?.telegram_chat_id) {
-      await sendMessage(Number(investment.user.telegram_chat_id), 
-        `🚀 Your investment #${investment.investment_id} is now trading!\n\nAmount: $${investment.deposit_amount}\nDuration: ${investment.plan?.trade_duration_hours || 6}h\nExpected Return: $${(investment.deposit_amount * (investment.plan?.return_multiplier || 1)).toFixed(2)}`)
+        tradeStartDate: tradeStart,
+        tradeEndDate: tradeEnd,
+      },
+    })
+
+    if (investment.user?.telegramChatId) {
+      await sendMessage(Number(investment.user.telegramChatId),
+        `🚀 Your investment #${investment.investmentId} is now trading!\n\nAmount: $${investment.depositAmount}\nDuration: ${investment.plan?.tradeDurationHours || 6}h\nExpected Return: $${(Number(investment.depositAmount) * (investment.plan?.returnMultiplier || 1)).toFixed(2)}`)
     }
     await sendMessage(adminChatId, '✅ Trade started and user notified!')
   } catch (error) {
@@ -283,17 +258,14 @@ const handleStartTrade = async (investmentId: string, adminChatId: number) => {
 }
 
 const handlePaidWithdrawal = async (withdrawalId: string, adminChatId: number) => {
-  if (!supabase) return
   try {
-    const { data: withdrawal } = await supabase
-      .from('withdrawals')
-      .update({ status: 'PAID' })
-      .eq('id', withdrawalId)
-      .select('*, user:users(*)')
-      .single()
-    
-    if (withdrawal?.user?.telegram_chat_id) {
-      await sendMessage(Number(withdrawal.user.telegram_chat_id), 
+    const withdrawal = await prisma.withdrawal.update({
+      where: { id: withdrawalId },
+      data: { status: 'PAID' },
+      include: { user: true },
+    })
+    if (withdrawal?.user?.telegramChatId) {
+      await sendMessage(Number(withdrawal.user.telegramChatId),
         `💸 Your withdrawal has been processed! Amount: $${withdrawal.amount}`)
     }
     await sendMessage(adminChatId, '✅ Withdrawal processed and user notified!')
