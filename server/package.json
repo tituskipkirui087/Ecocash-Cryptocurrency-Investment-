@@ -7,7 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "vercel-build": "node -e \"const { execSync } = require('child_process'); try { execSync('npx prisma generate', { stdio: 'inherit', shell: true }); } catch (e) { console.error('prisma generate failed:', e.message); }\" && tsc",
+    "vercel-build": "node -e \"const { execSync } = require('child_process'); try { execSync('npx prisma generate', { stdio: 'inherit', shell: true }); } catch (e) { console.error('prisma generate failed:', e.message); }\" && npx tsc",
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:seed": "tsx prisma/seed.ts",
     "prisma:studio": "prisma studio"
