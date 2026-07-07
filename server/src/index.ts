@@ -22,6 +22,9 @@ const allowedOrigins = [
   'https://ecocash-investment-copman-git-3d4518-tituskipkirui087s-projects.vercel.app',
   'https://ecocash-investment-copmany-gio1ysfg9-tituskipkirui087s-projects.vercel.app',
   process.env.FRONTEND_URL,
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:5173',
 ].filter(Boolean) as string[]
 
 app.use(cors({
