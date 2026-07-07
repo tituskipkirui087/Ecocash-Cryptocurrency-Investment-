@@ -5,7 +5,10 @@ import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ecocash-investment.vercel.app'
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ecocash-investment-copmanyzm.vercel.app'
+
+const shareDescription =
+  'Unlock investment opportunities in Cryptocurrencies, Forex, Commodities, Indices, and more. Our advanced trading system analyzes the markets and executes trades on your behalf with fast execution and competitive returns. Trades are completed within approximately 6 hours, with profits distributed automatically according to the platform’s investment model.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -13,7 +16,7 @@ export const metadata: Metadata = {
     default: 'Ecocash Investment Platform',
     template: '%s | Ecocash Investment Platform',
   },
-  description: 'Modern Trading Investment Management Platform - Automated Mining Machine',
+  description: shareDescription,
   icons: {
     icon: '/images/ecocash-favicon.svg',
   },
@@ -22,10 +25,10 @@ export const metadata: Metadata = {
     url: siteUrl,
     siteName: 'Ecocash Investment Platform',
     title: 'Ecocash Investment Platform',
-    description: 'Modern Trading Investment Management Platform - Automated Mining Machine',
+    description: shareDescription,
     images: [
       {
-        url: '/uploads/Attachment%20logo.jpeg',
+        url: '/uploads/share-logo.jpeg',
         width: 1344,
         height: 768,
         alt: 'Ecocash Investment Platform',
@@ -35,8 +38,8 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Ecocash Investment Platform',
-    description: 'Modern Trading Investment Management Platform - Automated Mining Machine',
-    images: ['/uploads/Attachment%20logo.jpeg'],
+    description: shareDescription,
+    images: ['/uploads/share-logo.jpeg'],
   },
 }
 

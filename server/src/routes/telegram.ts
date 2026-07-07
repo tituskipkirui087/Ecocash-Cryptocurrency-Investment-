@@ -2,13 +2,13 @@ import { Router } from 'express'
 import TelegramBot from 'node-telegram-bot-api'
 import { prisma } from '../config/db.js'
 import { pendingProfitForAdmin } from '../utils/telegramState.js'
+import { kvGet, kvSet, kvDel } from '../utils/telegramKv.js'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || ''
 const BOT_SECRET = process.env.BOT_SECRET || 'ecocash_bot_secret_2024'
 
 const pendingDepositForAdmin = new Map<string, string>()
-const notifiedNoDepositContext = new Set<string>()
 
 const router = Router()
 
@@ -50,8 +50,9 @@ router.post('/webhook', async (req, res) => {
           const chatIdStr = String(chatId)
           const depositId = pendingDepositForAdmin.get(chatIdStr)
           if (!depositId) {
-            if (!notifiedNoDepositContext.has(chatIdStr)) {
-              notifiedNoDepositContext.add(chatIdStr)
+            const notifyKey = `no_deposit_ctx:${chatIdStr}`
+            if ((await kvGet(notifyKey)) !== '1') {
+              await kvSet(notifyKey, '1')
               await sendMessage(chatId, '❌ No pending deposit context. Please use the inline button first.')
             }
             return
@@ -279,7 +280,7 @@ const handleSendEcocashDetails = async (investmentId: string, adminChatId: numbe
       return
     }
     pendingDepositForAdmin.set(String(adminChatId), deposit.id)
-    notifiedNoDepositContext.delete(String(adminChatId))
+    await kvDel(`no_deposit_ctx:${String(adminChatId)}`)
     await sendMessage(adminChatId, `📱 Send EcoCash details.\n\nFormat:\necocash:number,accountName`)
   } catch (error) {
     console.error('Send ecocash details error:', error)
