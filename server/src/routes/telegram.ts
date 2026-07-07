@@ -83,10 +83,10 @@ router.post('/webhook', async (req, res) => {
         const userId = callbackData.replace('reject_kyc_', '')
         await answerCallback(callbackQueryId, 'Rejecting KYC...')
         await handleRejectKYC(userId, chatId)
-      } else if (callbackData.startsWith('send_details_')) {
-        const depositId = callbackData.replace('send_details_', '')
-        await answerCallback(callbackQueryId, 'Send details...')
-        await sendMessage(chatId, `📱 Send EcoCash details. Format:\necocash:number,accountName,reference,${depositId}`)
+      } else if (callbackData.startsWith('send_ecocash_')) {
+        const investmentId = callbackData.replace('send_ecocash_', '')
+        await answerCallback(callbackQueryId, 'Preparing payment details...')
+        await handleSendEcocashDetails(investmentId, chatId)
       } else if (callbackData.startsWith('approve_deposit_')) {
         const depositId = callbackData.replace('approve_deposit_', '')
         await answerCallback(callbackQueryId, 'Approving deposit...')
@@ -197,6 +197,23 @@ const handleRejectKYC = async (userId: string, adminChatId: number) => {
   } catch (error) {
     console.error('Reject KYC error:', error)
     await sendMessage(adminChatId, '❌ Failed to reject KYC.')
+  }
+}
+
+const handleSendEcocashDetails = async (investmentId: string, adminChatId: number) => {
+  try {
+    const deposit = await prisma.deposit.findFirst({
+      where: { investmentId },
+      include: { user: true },
+    })
+    if (!deposit) {
+      await sendMessage(adminChatId, '❌ Deposit not found for this investment.')
+      return
+    }
+    await sendMessage(adminChatId, `📱 Send EcoCash details for deposit #${deposit.id}.\n\nFormat:\necocash:number,accountName,reference,${deposit.id}`)
+  } catch (error) {
+    console.error('Send ecocash details error:', error)
+    await sendMessage(adminChatId, '❌ Failed to prepare payment details.')
   }
 }
 

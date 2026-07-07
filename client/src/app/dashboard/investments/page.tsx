@@ -151,12 +151,12 @@ export default function InvestmentsPage() {
       try {
         const { data } = await api.get('deposits')
         const latest = data.data?.[0]
-        if (latest?.ecocash_number && !pendingPayment?.ecocashNumber) {
+        if (latest?.ecocashNumber && !pendingPayment?.ecocashNumber) {
           setPendingPayment({
             depositId: latest.id,
-            ecocashNumber: latest.ecocash_number,
-            ecocashAccountName: latest.ecocash_account_name,
-            ecocashReference: latest.ecocash_reference,
+            ecocashNumber: latest.ecocashNumber,
+            ecocashAccountName: latest.ecocashAccountName,
+            ecocashReference: latest.ecocashReference,
           })
           if (!toastShownRef.current.details) {
             toastShownRef.current.details = true
