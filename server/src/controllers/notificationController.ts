@@ -26,7 +26,7 @@ export const requestProfit = async (req: AuthRequest, res: Response): Promise<vo
     const userName = `${investment.user.firstName} ${investment.user.lastName}`
     const message = `Profit Request\n\nUser: ${userName}\nEmail: ${investment.user.email}\nInvestment: ${investment.investmentId}\nAmount: $${investment.depositAmount}\n\nPlease reply with profit in format:\n$1200`
 
-    pendingProfitForAdmin.set(String(process.env.TELEGRAM_ADMIN_CHAT_ID || ''), {
+    await pendingProfitForAdmin.set(String(process.env.TELEGRAM_ADMIN_CHAT_ID || ''), {
       userId,
       id: investment.id,
       investmentId: investment.investmentId,
