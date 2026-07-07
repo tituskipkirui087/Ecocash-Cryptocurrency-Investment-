@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
-import { Mail, Phone, Save, Camera, LogOut, Shield, User as UserIcon } from 'lucide-react'
+import { Mail, Phone, Save, Camera, LogOut, Shield, User as UserIcon, FileText, Calendar, MapPin, CreditCard } from 'lucide-react'
 
 export default function ProfilePage() {
   const { user, logout, updateUser } = useAuth()
@@ -53,6 +53,15 @@ export default function ProfilePage() {
         isVerified: userData.isVerified,
         role: userData.role,
         kycStatus: userData.kycStatus,
+        fullNameLegal: userData.fullNameLegal,
+        dateOfBirth: userData.dateOfBirth,
+        residentialAddress: userData.residentialAddress,
+        country: userData.country,
+        idDocumentType: userData.idDocumentType,
+        idDocumentNumber: userData.idDocumentNumber,
+        idDocumentFrontUrl: userData.idDocumentFrontUrl,
+        idDocumentBackUrl: userData.idDocumentBackUrl,
+        selfieUrl: userData.selfieUrl,
       } as any)
     } catch (err) {
       console.error('Failed to fetch profile:', err)
@@ -246,6 +255,41 @@ export default function ProfilePage() {
           </button>
         </form>
       </div>
+
+      {user?.kycStatus && user.kycStatus !== 'PENDING' && (
+        <div className="rounded-3xl border bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Shield className="h-5 w-5 text-brand-blue" />
+            KYC Verification Details
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-500">Full Legal Name</label>
+              <p className="mt-1 text-sm text-gray-900">{user.fullNameLegal || '-'}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500">Date of Birth</label>
+              <p className="mt-1 text-sm text-gray-900">{user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString() : '-'}</p>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-500">Residential Address</label>
+              <p className="mt-1 text-sm text-gray-900">{user.residentialAddress || '-'}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500">Country</label>
+              <p className="mt-1 text-sm text-gray-900">{user.country || '-'}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500">ID Document Type</label>
+              <p className="mt-1 text-sm text-gray-900">{user.idDocumentType || '-'}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500">ID Document Number</label>
+              <p className="mt-1 text-sm text-gray-900">{user.idDocumentNumber || '-'}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
