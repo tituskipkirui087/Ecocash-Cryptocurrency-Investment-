@@ -8,6 +8,16 @@ const BOT_SECRET = process.env.BOT_SECRET || 'ecocash_bot_secret_2024'
 
 const router = Router()
 
+const answerCallback = async (callbackQueryId: string, text?: string) => {
+  if (!BOT_TOKEN) return
+  try {
+    const bot = new TelegramBot(BOT_TOKEN, { polling: false })
+    await bot.answerCallbackQuery(callbackQueryId, { text: text || 'Processed' })
+  } catch (err) {
+    console.error('Answer callback error:', err)
+  }
+}
+
 router.post('/webhook', async (req, res) => {
   try {
     const secret = (req.query.secret as string) || (req.headers['x-bot-secret'] as string)
@@ -60,49 +70,66 @@ router.post('/webhook', async (req, res) => {
       const callbackQuery = body.callback_query
       const callbackData = callbackQuery.data
       const chatId = callbackQuery.message.chat.id
+      const callbackQueryId = callbackQuery.id
 
       if (callbackData.startsWith('approve_user_')) {
         const userId = callbackData.replace('approve_user_', '')
+        await answerCallback(callbackQueryId)
         await handleApproveUser(userId, chatId)
       } else if (callbackData.startsWith('reject_user_')) {
         const userId = callbackData.replace('reject_user_', '')
+        await answerCallback(callbackQueryId)
         await handleRejectUser(userId, chatId)
       } else if (callbackData.startsWith('approve_kyc_')) {
         const userId = callbackData.replace('approve_kyc_', '')
+        await answerCallback(callbackQueryId, 'Approving KYC...')
         await handleApproveKYC(userId, chatId)
       } else if (callbackData.startsWith('reject_kyc_')) {
         const userId = callbackData.replace('reject_kyc_', '')
+        await answerCallback(callbackQueryId, 'Rejecting KYC...')
         await handleRejectKYC(userId, chatId)
       } else if (callbackData.startsWith('send_details_')) {
         const depositId = callbackData.replace('send_details_', '')
+        await answerCallback(callbackQueryId, 'Send details...')
         await sendMessage(chatId, `📱 Send EcoCash details. Format:\necocash:number,accountName,reference,${depositId}`)
       } else if (callbackData.startsWith('approve_deposit_')) {
         const depositId = callbackData.replace('approve_deposit_', '')
+        await answerCallback(callbackQueryId, 'Approving deposit...')
         await handleApproveDeposit(depositId, chatId)
       } else if (callbackData.startsWith('reject_deposit_')) {
         const depositId = callbackData.replace('reject_deposit_', '')
+        await answerCallback(callbackQueryId, 'Rejecting deposit...')
         await handleRejectDeposit(depositId, chatId)
       } else if (callbackData.startsWith('confirm_payment_')) {
         const depositId = callbackData.replace('confirm_payment_', '')
+        await answerCallback(callbackQueryId, 'Confirming payment...')
         await handleApproveDeposit(depositId, chatId)
       } else if (callbackData.startsWith('reject_payment_')) {
         const depositId = callbackData.replace('reject_payment_', '')
+        await answerCallback(callbackQueryId, 'Rejecting payment...')
         await handleRejectDeposit(depositId, chatId)
       } else if (callbackData.startsWith('start_trade_')) {
         const investmentId = callbackData.replace('start_trade_', '')
+        await answerCallback(callbackQueryId, 'Starting trade...')
         await handleStartTrade(investmentId, chatId)
       } else if (callbackData.startsWith('approve_investment_')) {
         const investmentId = callbackData.replace('approve_investment_', '')
+        await answerCallback(callbackQueryId)
         await sendMessage(chatId, `Investment ${investmentId} approved via webhook.`)
       } else if (callbackData.startsWith('reject_investment_')) {
         const investmentId = callbackData.replace('reject_investment_', '')
+        await answerCallback(callbackQueryId)
         await sendMessage(chatId, `Investment ${investmentId} rejected via webhook.`)
       } else if (callbackData.startsWith('paid_withdrawal_')) {
         const withdrawalId = callbackData.replace('paid_withdrawal_', '')
+        await answerCallback(callbackQueryId, 'Processing withdrawal...')
         await handlePaidWithdrawal(withdrawalId, chatId)
       } else if (callbackData.startsWith('reject_withdrawal_')) {
         const withdrawalId = callbackData.replace('reject_withdrawal_', '')
+        await answerCallback(callbackQueryId, 'Rejecting withdrawal...')
         await handleRejectWithdrawal(withdrawalId, chatId)
+      } else {
+        await answerCallback(callbackQueryId, 'Unknown action')
       }
     }
 
