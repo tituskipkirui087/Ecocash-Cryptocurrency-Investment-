@@ -20,11 +20,6 @@ const answerCallback = async (callbackQueryId: string, text?: string) => {
 
 router.post('/webhook', async (req, res) => {
   try {
-    const secret = (req.query.secret as string) || (req.headers['x-bot-secret'] as string)
-    if (secret !== BOT_SECRET) {
-      return res.sendStatus(401)
-    }
-
     const body = req.body
 
     if (body.message && body.message.text) {
