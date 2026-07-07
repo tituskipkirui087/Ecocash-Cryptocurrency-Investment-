@@ -9,22 +9,28 @@ export const requestProfit = async (req: AuthRequest, res: Response): Promise<vo
     const userId = req.user!.id
     const { investmentId } = req.body
 
-    if (!investmentId) {
-      res.status(400).json({ success: false, message: 'Investment ID is required' })
-      return
-    }
-
     const investment = await prisma.investment.findFirst({
-      where: { investmentId, status: { in: ['PAYMENT_RECEIVED', 'ACTIVE_TRADE'] } },
+      where: {
+        userId,
+        ...(investmentId ? { investmentId } : {}),
+        status: { in: ['PAYMENT_RECEIVED', 'ACTIVE_TRADE'] },
+      },
+      orderBy: { createdAt: 'desc' },
+      include: { user: true },
     })
     if (!investment) {
-      res.status(404).json({ success: false, message: 'Investment not found or not in valid status' })
+      res.status(404).json({ success: false, message: 'No active investment found for profit tracking' })
       return
     }
 
-    const message = `📊 Profit Request\n\nUser: ${userId}\nInvestment: ${investmentId}\n\nPlease input profit in format:\n$1200`
+    const userName = `${investment.user.firstName} ${investment.user.lastName}`
+    const message = `Profit Request\n\nUser: ${userName}\nEmail: ${investment.user.email}\nInvestment: ${investment.investmentId}\nAmount: $${investment.depositAmount}\n\nPlease reply with profit in format:\n$1200`
 
-    pendingProfitForAdmin.set(String(process.env.TELEGRAM_ADMIN_CHAT_ID || ''), { userId, investmentId })
+    pendingProfitForAdmin.set(String(process.env.TELEGRAM_ADMIN_CHAT_ID || ''), {
+      userId,
+      id: investment.id,
+      investmentId: investment.investmentId,
+    })
 
     await sendTelegramMessage(message)
     res.json({ success: true, message: 'Profit request sent to admin' })

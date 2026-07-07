@@ -585,7 +585,7 @@ export default function InvestmentsPage() {
                       ).toLocaleString()}</span>
                       <button
                         onClick={() => {
-                          api.post('/notifications/profit-request', { investmentId: inv.investmentId })
+                          api.post('notifications/profit-request', { investmentId: inv.investmentId })
                             .then(() => toast.success('Profit request sent to admin!'))
                             .catch((err) => toast.error(err.response?.data?.message || 'Failed to send request'))
                         }}

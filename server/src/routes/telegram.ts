@@ -88,14 +88,14 @@ router.post('/webhook', async (req, res) => {
           if (amountMatch) {
             const profitAmount = parseFloat(amountMatch[1])
             if (profitAmount > 0) {
-              const investment = await prisma.investment.findUnique({ where: { investmentId: profitData.investmentId } })
+              const investment = await prisma.investment.findUnique({ where: { id: profitData.id } })
               if (investment) {
                 const currentBalance = Number(investment.currentBalance || investment.depositAmount || 0)
                 const depositAmount = Number(investment.depositAmount || currentBalance)
                 const newBalance = currentBalance + profitAmount
                 const calculatedPercentage = profitAmount / depositAmount * 100
                 const updated = await prisma.investment.update({
-                  where: { id: profitData.investmentId },
+                  where: { id: profitData.id },
                   data: {
                     currentBalance: newBalance,
                     profitAmount: profitAmount,
