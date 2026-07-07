@@ -77,7 +77,7 @@ router.post('/webhook', async (req, res) => {
           if (amountMatch) {
             const profitAmount = parseFloat(amountMatch[1])
             if (profitAmount > 0) {
-              const investment = await prisma.investment.findUnique({ where: { id: profitData.investmentId } })
+              const investment = await prisma.investment.findUnique({ where: { investmentId: profitData.investmentId } })
               if (investment) {
                 const currentBalance = Number(investment.currentBalance || investment.depositAmount || 0)
                 const depositAmount = Number(investment.depositAmount || currentBalance)

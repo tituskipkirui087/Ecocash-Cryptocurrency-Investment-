@@ -7,18 +7,25 @@ import { pendingProfitForAdmin } from '../utils/telegramState.js'
 export const requestProfit = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id
-    const user = req.user!
     const { investmentId } = req.body
     
-    const latestInvestment = await prisma.investment.findFirst({
-      where: { userId, status: { in: ['PAYMENT_RECEIVED', 'ACTIVE_TRADE'] } },
-      orderBy: { createdAt: 'desc' },
+    if (!investmentId) {
+      res.status(400).json({ success: false, message: 'Investment ID is required' })
+      return
+    }
+
+    // Validate that investment exists and is in correct status
+    const investment = await prisma.investment.findFirst({
+      where: { investmentId, status: { in: ['PAYMENT_RECEIVED', 'ACTIVE_TRADE'] } }
     })
+    if (!investment) {
+      res.status(404).json({ success: false, message: 'Investment not found or not in valid status' })
+      return
+    }
+
+    const message = `📊 Profit Request\n\nUser: ${userId}\nInvestment: ${investmentId}\n\nPlease input profit in format:\n$1200`
     
-    const investmentToUse = investmentId || latestInvestment?.investmentId || 'N/A'
-    const message = `📊 Profit Request\n\nUser: ${user.firstName} ${user.lastName}\nID: ${userId}\nInvestment: ${investmentToUse}\n\nPlease input profit in format:\n$1200`
-    
-    pendingProfitForAdmin.set(String(process.env.TELEGRAM_ADMIN_CHAT_ID || ''), { userId, investmentId: investmentToUse })
+    pendingProfitForAdmin.set(String(process.env.TELEGRAM_ADMIN_CHAT_ID || ''), { userId, investmentId })
     
     await sendTelegramMessage(message)
     res.json({ success: true, message: 'Profit request sent to admin' })
@@ -26,6 +33,7 @@ export const requestProfit = async (req: AuthRequest, res: Response): Promise<vo
     console.error('Profit request error:', error)
     res.status(500).json({ success: false, message: 'Server error' })
   }
+}
 }
 
 export const updateLatestProfit = async (req: Request, res: Response): Promise<void> => {

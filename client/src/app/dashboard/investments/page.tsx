@@ -131,6 +131,7 @@ export default function InvestmentsPage() {
           ecocashAccountName: data.ecocashAccountName,
           ecocashReference: data.ecocashReference,
         } : null)
+        setView('pending')
         toast.success('Payment details received!')
       }
       if (data.type === 'payment_approved' && !toastShownRef.current.approved) {
