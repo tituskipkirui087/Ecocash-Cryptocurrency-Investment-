@@ -40,7 +40,7 @@ router.post('/webhook', async (req, res) => {
           ? `Pending Approvals:\n${pending.map((d: any) => `- ${d.user?.email}: $${d.amount}`).join('\n')}`
           : 'No pending actions.'
         await sendMessage(chatId, msg)
-      } else if (text.startsWith('ecocash:')) {
+      } else if (text.toLowerCase().startsWith('ecocash:')) {
         const parts = text.substring(8).split(',')
         if (parts.length >= 2) {
           const number = parts[0].trim()
