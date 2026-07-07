@@ -46,13 +46,13 @@ export default function ProfilePage() {
       updateUser({
         id: userData.id,
         email: userData.email,
-        firstName: userData.first_name || '',
-        lastName: userData.last_name || '',
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
         phone: userData.phone || '',
         avatar: userData.avatar,
-        isVerified: userData.is_verified,
+        isVerified: userData.isVerified,
         role: userData.role,
-        kycStatus: userData.kyc_status,
+        kycStatus: userData.kycStatus,
       } as any)
     } catch (err) {
       console.error('Failed to fetch profile:', err)
@@ -60,14 +60,14 @@ export default function ProfilePage() {
   }
 
   useEffect(() => {
-    if (user?.isVerified && !showKycConfirmed) {
+    if (user?.kycStatus === 'APPROVED' && !showKycConfirmed) {
       setShowKycConfirmed(true)
       toast.success('KYC Verified! Your account is now fully activated.', {
         duration: 5000,
         position: 'top-center',
       })
     }
-  }, [user?.isVerified, showKycConfirmed])
+  }, [user?.kycStatus, showKycConfirmed])
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -122,13 +122,13 @@ export default function ProfilePage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
         Profile Settings
-        {user?.isVerified && (
+        {user?.kycStatus === 'APPROVED' && (
           <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full animate-pulse">
             <Shield className="h-3 w-3" />
             KYC Verified
           </span>
         )}
-        {user?.kycStatus === 'SUBMITTED' && !user?.isVerified && (
+        {user?.kycStatus === 'SUBMITTED' && (
           <span className="inline-flex items-center gap-1 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
             <Shield className="h-3 w-3" />
             Pending Review
@@ -137,7 +137,7 @@ export default function ProfilePage() {
       </h1>
 
       <div className="rounded-3xl border bg-white p-6 shadow-sm">
-        {user?.kycStatus === 'SUBMITTED' && !user?.isVerified && (
+        {user?.kycStatus === 'SUBMITTED' && (
           <div className="mb-4 rounded-xl bg-yellow-50 p-4 flex items-center gap-2">
             <Shield className="h-5 w-5 text-yellow-600" />
             <p className="text-sm text-yellow-800">Your KYC is under review. You will receive a notification once approved.</p>
@@ -166,7 +166,7 @@ export default function ProfilePage() {
               <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${user?.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' : 'bg-brand-blue/10 text-brand-blue'}`}>
                 {user?.role}
               </span>
-              {user?.isVerified && (
+              {user?.kycStatus === 'APPROVED' && (
                 <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
                   <Shield className="h-3 w-3" />
                   Verified

@@ -41,8 +41,8 @@ export default function RegisterPage() {
         phone: data.data.user.phone,
         kycStatus: data.data.user.kycStatus,
       }))
-      toast.success('Registration successful!')
-      router.push('/dashboard')
+      toast.success('Registration successful! Please complete KYC.')
+      router.push('/kyc')
     } catch (err: any) {
       const serverMessage = err.response?.data?.details || err.response?.data?.message || 'Registration failed'
       setError(serverMessage)

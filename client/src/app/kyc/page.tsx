@@ -38,6 +38,13 @@ export default function KYCPage() {
   const streamRef = useRef<MediaStream | null>(null)
 
   useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/login')
+    }
+  }, [router])
+
+  useEffect(() => {
     if (showCamera && videoRef.current && !streamRef.current) {
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {

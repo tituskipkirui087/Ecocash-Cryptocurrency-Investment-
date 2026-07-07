@@ -42,8 +42,9 @@ export const register = async (req: AuthRequest, res: Response): Promise<void> =
           firstName,
           lastName,
           phone,
-          isVerified: true,
-          isActive: true,
+          isVerified: false,
+          isActive: false,
+          kycStatus: 'PENDING',
         },
       select: {
         id: true,

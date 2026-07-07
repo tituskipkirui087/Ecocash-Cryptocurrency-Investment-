@@ -99,7 +99,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {user?.firstName} {user?.lastName}
             </span>
           </div>
-          {user?.isVerified && (
+          {user?.kycStatus === 'APPROVED' && (
             <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
               Verified
             </span>

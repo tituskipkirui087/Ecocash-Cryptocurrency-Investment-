@@ -41,13 +41,17 @@ function LoginForm() {
       const userData = data.data.user
       const mappedUser = {
         ...userData,
-        firstName: userData.first_name,
-        lastName: userData.last_name,
-        kycStatus: userData.kyc_status,
+        firstName: userData.firstName || userData.first_name,
+        lastName: userData.lastName || userData.last_name,
+        kycStatus: userData.kycStatus || userData.kyc_status,
         phone: userData.phone,
       }
       login(data.data.token, mappedUser)
-      router.push('/dashboard')
+      if (mappedUser.kycStatus === 'APPROVED') {
+        router.push('/dashboard')
+      } else {
+        router.push('/waiting-approval')
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed')
     } finally {
