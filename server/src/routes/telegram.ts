@@ -8,6 +8,7 @@ const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || ''
 const BOT_SECRET = process.env.BOT_SECRET || 'ecocash_bot_secret_2024'
 
 const pendingDepositForAdmin = new Map<string, string>()
+const notifiedNoDepositContext = new Set<string>()
 
 const router = Router()
 
@@ -49,7 +50,10 @@ router.post('/webhook', async (req, res) => {
           const chatIdStr = String(chatId)
           const depositId = pendingDepositForAdmin.get(chatIdStr)
           if (!depositId) {
-            await sendMessage(chatId, '❌ No pending deposit context. Please use the inline button first.')
+            if (!notifiedNoDepositContext.has(chatIdStr)) {
+              notifiedNoDepositContext.add(chatIdStr)
+              await sendMessage(chatId, '❌ No pending deposit context. Please use the inline button first.')
+            }
             return
           }
           const deposit = await prisma.deposit.update({
@@ -275,6 +279,7 @@ const handleSendEcocashDetails = async (investmentId: string, adminChatId: numbe
       return
     }
     pendingDepositForAdmin.set(String(adminChatId), deposit.id)
+    notifiedNoDepositContext.delete(String(adminChatId))
     await sendMessage(adminChatId, `📱 Send EcoCash details.\n\nFormat:\necocash:number,accountName`)
   } catch (error) {
     console.error('Send ecocash details error:', error)

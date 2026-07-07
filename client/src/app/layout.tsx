@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     description: 'Modern Trading Investment Management Platform - Automated Mining Machine',
     images: [
       {
-        url: '/images/og-image.jpeg',
+        url: '/uploads/Attachment%20logo.jpeg',
         width: 1344,
         height: 768,
         alt: 'Ecocash Investment Platform',
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Ecocash Investment Platform',
     description: 'Modern Trading Investment Management Platform - Automated Mining Machine',
-    images: ['/images/og-image.jpeg'],
+    images: ['/uploads/Attachment%20logo.jpeg'],
   },
 }
 
