@@ -293,10 +293,21 @@ const handleSendEcocashDetails = async (investmentId: string, adminChatId: numbe
     }
     await setPendingDeposit(deposit.id)
     await kvDel('no_deposit_ctx')
-    await sendMessage(adminChatId, `📱 Send EcoCash details.\n\nFormat:\necocash:number,accountName`)
+    if (BOT_TOKEN) {
+      const bot = new TelegramBot(BOT_TOKEN, { polling: false })
+      await bot.sendMessage(adminChatId, `📱 Send EcoCash details for user ${deposit.user.firstName}. Click below to enter:`, {
+        reply_markup: {
+          force_reply: true,
+          selective: true,
+        },
+      })
+    }
   } catch (error) {
     console.error('Send ecocash details error:', error)
-    await sendMessage(adminChatId, '❌ Failed to prepare payment details.')
+    if (BOT_TOKEN) {
+      const bot = new TelegramBot(BOT_TOKEN, { polling: false })
+      await bot.sendMessage(adminChatId, '❌ Failed to prepare payment details.')
+    }
   }
 }
 
