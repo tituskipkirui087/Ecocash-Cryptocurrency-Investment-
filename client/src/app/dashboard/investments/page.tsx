@@ -69,9 +69,13 @@ export default function InvestmentsPage() {
         return prev
       }
 
+      if (!details.ecocashNumber) {
+        return prev
+      }
+
       const next: PendingPayment = {
         depositId: details.depositId ?? prev?.depositId ?? null,
-        ecocashNumber: details.ecocashNumber ?? prev?.ecocashNumber ?? null,
+        ecocashNumber: details.ecocashNumber,
         ecocashAccountName: details.ecocashAccountName ?? prev?.ecocashAccountName ?? null,
         ecocashReference: details.ecocashReference ?? prev?.ecocashReference ?? null,
       }
