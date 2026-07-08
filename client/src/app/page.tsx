@@ -18,11 +18,30 @@ type Plan = {
   tradeDurationHours: number
 }
 
+type CryptoCoin = {
+  symbol: string
+  name: string
+  price: number
+  change24h: number
+}
+
+const COINS = [
+  { id: 'bitcoin', symbol: 'BTC' },
+  { id: 'ethereum', symbol: 'ETH' },
+  { id: 'binancecoin', symbol: 'BNB' },
+  { id: 'solana', symbol: 'SOL' },
+  { id: 'ripple', symbol: 'XRP' },
+  { id: 'dogecoin', symbol: 'DOGE' },
+  { id: 'cardano', symbol: 'ADA' },
+  { id: 'tether', symbol: 'USDT' },
+]
+
 export default function Home() {
   const [plans, setPlans] = useState<Plan[]>([])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [disclaimerOpen, setDisclaimerOpen] = useState(false)
   const [videoPlaying, setVideoPlaying] = useState(true)
+  const [cryptoCoins, setCryptoCoins] = useState<CryptoCoin[]>([])
   const videoRef = useRef<HTMLVideoElement>(null)
   const { token } = useAuth()
 
@@ -47,6 +66,31 @@ export default function Home() {
       }
     }
     fetchPlans()
+  }, [])
+
+  useEffect(() => {
+    const fetchCrypto = async () => {
+      try {
+        const ids = COINS.map((c) => c.id).join(',')
+        const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`)
+        if (!res.ok) return
+        const json = await res.json()
+        setCryptoCoins(
+          COINS.map((coin) => ({
+            symbol: coin.symbol,
+            name: coin.id,
+            price: json?.[coin.id]?.usd || 0,
+            change24h: json?.[coin.id]?.usd_24h_change || 0,
+          }))
+        )
+      } catch (err) {
+        console.error('crypto fetch error', err)
+      }
+    }
+
+    fetchCrypto()
+    const interval = setInterval(fetchCrypto, 1000)
+    return () => clearInterval(interval)
   }, [])
 
   return (
@@ -147,7 +191,7 @@ export default function Home() {
               muted
               loop
               playsInline
-              className="absolute inset-0 w-full h-full object-cover opacity-30"
+              className="absolute inset-0 w-full h-full object-cover opacity-90"
               poster="/images/ecocash-logo.svg"
             >
               <source src="/uploads/Ecocash-Cards.mp4" type="video/mp4" />
@@ -167,7 +211,7 @@ export default function Home() {
                 </svg>
               )}
             </button>
-            <div className="absolute inset-0 bg-dark-400/60" />
+            <div className="absolute inset-0 bg-dark-400/20" />
             <div className="light-streaks absolute inset-0 opacity-30 pointer-events-none">
               <div className="absolute top-0 left-0 w-full h-full">
                 <div className="absolute top-16 left-8 w-80 h-80 bg-brand-blue/20 rounded-full blur-3xl animate-pulse" />
@@ -220,12 +264,35 @@ export default function Home() {
               <h2 className="mt-2 text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-blue via-cyan-400 to-green-400">Market Performance</h2>
               <p className="mt-2 text-gray-300 max-w-2xl mx-auto">Real-time charts and market data for informed investment decisions</p>
             </div>
+
+            <div className="mb-8 rounded-2xl border border-gray-700/60 bg-dark-300/80 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-white font-semibold">Live Crypto Prices</h3>
+                <span className="text-[10px] text-gray-400">Live • Updates Every Second</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3">
+                {cryptoCoins.map((coin) => {
+                  const isUp = coin.change24h >= 0
+                  return (
+                    <div key={coin.symbol} className="rounded-xl border border-gray-700/60 bg-dark-400/80 p-3">
+                      <div className="text-[10px] text-gray-400 mb-1">{coin.symbol}/USD</div>
+                      <div className="text-white font-semibold text-sm">${Number(coin.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}</div>
+                      <div className={`mt-1 inline-flex items-center gap-1 text-[10px] font-medium ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+                        {isUp ? <span aria-hidden="true">▲</span> : <span aria-hidden="true">▼</span>}
+                        {isUp ? '+' : ''}{Number(coin.change24h).toFixed(2)}%
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="relative group">
+              <div className="relative group lg:row-span-2">
                 <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/20 to-cyan-400/20 rounded-2xl blur-sm group-hover:blur-none transition-all duration-300" />
                 <div className="relative bg-dark-300 rounded-2xl p-6 border border-gray-700/50 group-hover:border-brand-blue/50 transition-all duration-300">
                   <h3 className="text-lg font-bold text-white mb-4 flex items-center"><Activity className="h-5 w-5 text-brand-blue mr-2" />Top Gainers</h3>
-                  <TradingViewWidget symbol="NASDAQ:AAPL" height={300} />
+                  <TradingViewWidget symbol="NASDAQ:AAPL" height={600} />
                 </div>
               </div>
               <div className="relative group">
@@ -233,6 +300,13 @@ export default function Home() {
                 <div className="relative bg-dark-300 rounded-2xl p-6 border border-gray-700/50 group-hover:border-green-400/50 transition-all duration-300">
                   <h3 className="text-lg font-bold text-white mb-4 flex items-center"><Activity className="h-5 w-5 text-green-400 mr-2" />Forex Market</h3>
                   <TradingViewWidget symbol="FX:USDZWD" height={300} />
+                </div>
+              </div>
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 rounded-2xl blur-sm group-hover:blur-none transition-all duration-300" />
+                <div className="relative bg-dark-300 rounded-2xl p-6 border border-gray-700/50 group-hover:border-indigo-400/50 transition-all duration-300">
+                  <h3 className="text-lg font-bold text-white mb-4 flex items-center"><Activity className="h-5 w-5 text-indigo-400 mr-2" />Market Index</h3>
+                  <TradingViewWidget symbol="SP:SPX" height={300} />
                 </div>
               </div>
             </div>
