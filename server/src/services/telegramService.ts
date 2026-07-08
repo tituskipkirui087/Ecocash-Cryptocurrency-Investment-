@@ -101,12 +101,32 @@ export const notifyNewUser = async (email: string, userId: string): Promise<void
 
 export const notifyNewInvestment = async (investmentId: string, userName: string, amount: number, userId: string, invUuid: string): Promise<void> => {
   const buttons = [
-    { text: 'Send EcoCash Details', callback_data: `send_ecocash_${invUuid}` },
     { text: 'Start Trade', callback_data: `start_trade_${invUuid}` },
     { text: 'Reject', callback_data: `reject_investment_${invUuid}` },
   ]
   console.log('Sending Telegram notification for new investment:', { investmentId, userName, amount, invUuid })
-  await sendTelegramWithButtons(`💰 New Investment Request\n\nUser: ${userName}\nAmount: $${amount}\nRequest ID: ${investmentId}`, buttons)
+
+  let botInstance = bot
+  if (!botInstance && BOT_TOKEN) {
+    try {
+      botInstance = new TelegramBot(BOT_TOKEN, { polling: false })
+      bot = botInstance
+    } catch (error) {
+      console.error('Telegram bot init error:', error)
+    }
+  }
+
+  if (botInstance && ADMIN_CHAT_ID) {
+    try {
+      await botInstance.sendMessage(ADMIN_CHAT_ID, `💰 New Investment Request\n\nUser: ${userName}\nAmount: $${amount}\nRequest ID: ${investmentId}\n\nReply with payment details format:\necocash:number,accountName`, {
+        reply_markup: {
+          inline_keyboard: buttons.map((btn) => [{ text: btn.text, callback_data: btn.callback_data }]),
+        },
+      })
+    } catch (error) {
+      console.error('Send investment notification error:', error)
+    }
+  }
 }
 
 export const notifyDepositSubmitted = async (depositId: string, userName: string, amount: number, method: string, receiptPath?: string, txHash?: string): Promise<void> => {

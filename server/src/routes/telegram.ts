@@ -35,6 +35,10 @@ const answerCallback = async (callbackQueryId: string, text?: string) => {
   }
 }
 
+export const setPendingDepositContext = async (depositId: string): Promise<void> => {
+  await setPendingDeposit(depositId)
+}
+
 router.post('/webhook', async (req, res) => {
   try {
     const body = req.body
