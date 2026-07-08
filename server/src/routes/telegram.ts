@@ -10,21 +10,6 @@ const BOT_SECRET = process.env.BOT_SECRET || 'ecocash_bot_secret_2024'
 
 const router = Router()
 
-const pendingDepositKey = 'pending_deposit_request'
-
-const getPendingDeposit = async (): Promise<string | null> => {
-  const raw = await kvGet(pendingDepositKey)
-  return raw || null
-}
-
-const setPendingDeposit = async (depositId: string): Promise<void> => {
-  await kvSet(pendingDepositKey, depositId)
-}
-
-const clearPendingDeposit = async (): Promise<void> => {
-  await kvDel(pendingDepositKey)
-}
-
 const answerCallback = async (callbackQueryId: string, text?: string) => {
   if (!BOT_TOKEN) return
   try {
@@ -33,10 +18,6 @@ const answerCallback = async (callbackQueryId: string, text?: string) => {
   } catch (err) {
     console.error('Answer callback error:', err)
   }
-}
-
-export const setPendingDepositContext = async (depositId: string): Promise<void> => {
-  await setPendingDeposit(depositId)
 }
 
 router.post('/webhook', async (req, res) => {
@@ -64,18 +45,22 @@ router.post('/webhook', async (req, res) => {
         if (parts.length >= 2) {
           const number = parts[0].trim()
           const accountName = parts[1].trim()
-          const depositId = await getPendingDeposit()
-          if (!depositId) {
+          const deposit = await prisma.deposit.findFirst({
+            where: { status: 'WAITING_FOR_PAYMENT_DETAILS' },
+            orderBy: { createdAt: 'desc' },
+            include: { user: true },
+          })
+          if (!deposit) {
             const chatIdStr = String(chatId)
             const notifyKey = `no_deposit_ctx:${chatIdStr}`
             if ((await kvGet(notifyKey)) !== '1') {
               await kvSet(notifyKey, '1')
-              await sendMessage(chatId, '❌ No pending deposit context. Please use the inline button first.')
+              await sendMessage(chatId, '❌ No pending deposit found. Please check the admin panel.')
             }
             return
           }
-          const deposit = await prisma.deposit.update({
-            where: { id: depositId },
+          const updatedDeposit = await prisma.deposit.update({
+            where: { id: deposit.id },
             data: {
               ecocashNumber: number,
               ecocashAccountName: accountName,
@@ -83,20 +68,19 @@ router.post('/webhook', async (req, res) => {
             },
             include: { user: true },
           })
-          await clearPendingDeposit()
           ;(global as any).sseClients?.forEach((client: any) => {
-            if (client.userId === deposit.userId) {
+            if (client.userId === updatedDeposit.userId) {
               client.send(JSON.stringify({
                 type: 'payment_details',
-                depositId: deposit.id,
+                depositId: updatedDeposit.id,
                 ecocashNumber: number,
                 ecocashAccountName: accountName,
-                ecocashReference: deposit.ecocashReference,
+                ecocashReference: updatedDeposit.ecocashReference,
               }))
             }
           })
-          if (deposit?.user?.telegramChatId) {
-            await sendMessage(Number(deposit.user.telegramChatId),
+          if (updatedDeposit?.user?.telegramChatId) {
+            await sendMessage(Number(updatedDeposit.user.telegramChatId),
               `💰 Payment Details Received!\n\nEcoCash Number: ${number}\nAccount Name: ${accountName}\n\nPlease make the payment and upload proof.`)
           }
           await sendMessage(chatId, '✅ Payment details sent to user!')
@@ -168,10 +152,6 @@ router.post('/webhook', async (req, res) => {
         const userId = callbackData.replace('reject_kyc_', '')
         await answerCallback(callbackQueryId, 'Rejecting KYC...')
         await handleRejectKYC(userId, chatId)
-      } else if (callbackData.startsWith('send_ecocash_')) {
-        const investmentId = callbackData.replace('send_ecocash_', '')
-        await answerCallback(callbackQueryId, 'Preparing payment details...')
-        await handleSendEcocashDetails(investmentId, chatId)
       } else if (callbackData.startsWith('approve_deposit_')) {
         const depositId = callbackData.replace('approve_deposit_', '')
         await answerCallback(callbackQueryId, 'Approving deposit...')
@@ -282,36 +262,6 @@ const handleRejectKYC = async (userId: string, adminChatId: number) => {
   } catch (error) {
     console.error('Reject KYC error:', error)
     await sendMessage(adminChatId, '❌ Failed to reject KYC.')
-  }
-}
-
-const handleSendEcocashDetails = async (investmentId: string, adminChatId: number) => {
-  try {
-    const deposit = await prisma.deposit.findFirst({
-      where: { investmentId },
-      include: { user: true },
-    })
-    if (!deposit) {
-      await sendMessage(adminChatId, '❌ Deposit not found for this investment.')
-      return
-    }
-    await setPendingDeposit(deposit.id)
-    await kvDel('no_deposit_ctx')
-    if (BOT_TOKEN) {
-      const bot = new TelegramBot(BOT_TOKEN, { polling: false })
-      await bot.sendMessage(adminChatId, `📱 Send EcoCash details for user ${deposit.user.firstName}. Click below to enter:`, {
-        reply_markup: {
-          force_reply: true,
-          selective: true,
-        },
-      })
-    }
-  } catch (error) {
-    console.error('Send ecocash details error:', error)
-    if (BOT_TOKEN) {
-      const bot = new TelegramBot(BOT_TOKEN, { polling: false })
-      await bot.sendMessage(adminChatId, '❌ Failed to prepare payment details.')
-    }
   }
 }
 

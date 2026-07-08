@@ -13,7 +13,7 @@ const submitDepositSchema = z.object({
 })
 
 const updateDepositStatusSchema = z.object({
-  status: z.enum(['PAYMENT_DETAILS_SENT', 'PAYMENT_RECEIVED', 'REJECTED']),
+  status: z.enum(['PAYMENT_DETAILS_SENT', 'PAYMENT_RECEIVED', 'REJECTED']).optional(),
   ecocashNumber: z.string().optional(),
   ecocashAccountName: z.string().optional(),
   ecocashReference: z.string().optional(),

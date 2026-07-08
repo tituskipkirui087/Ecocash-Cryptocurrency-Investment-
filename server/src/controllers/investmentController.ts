@@ -3,7 +3,6 @@ import { AuthRequest, authenticateToken } from '../middleware/auth.js'
 import { prisma } from '../config/db.js'
 import { generateInvestmentId, formatCurrency } from '../utils/helpers.js'
 import { sendTelegramWithButtons, notifyNewInvestment, notifyTradeClosed } from '../services/telegramService.js'
-import { setPendingDepositContext } from '../routes/telegram.js'
 import { z } from 'zod'
 
 const createInvestmentSchema = z.object({
@@ -92,7 +91,6 @@ export const createInvestment = async (req: AuthRequest, res: Response): Promise
       },
     })
 
-    await setPendingDepositContext(deposit.id)
     await notifyNewInvestment(investment.investmentId, `${investment.user.firstName} ${investment.user.lastName}`, Number(amount), investment.userId, investment.id)
     await prisma.auditLog.create({
       data: {
