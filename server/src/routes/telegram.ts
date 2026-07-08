@@ -86,8 +86,7 @@ router.post('/webhook', async (req, res) => {
         }
       } else {
         // Check for profit amount reply from admin
-        const chatIdStr = String(chatId)
-        const profitData = await pendingProfitForAdmin.get(chatIdStr)
+        const profitData = await pendingProfitForAdmin.get()
         if (profitData) {
           const amountMatch = text.match(/^\$?\s*([0-9]+(?:\.[0-9]+)?)$/)
           if (amountMatch) {
@@ -123,7 +122,7 @@ router.post('/webhook', async (req, res) => {
               } else {
                 await sendMessage(chatId, '❌ Investment not found.')
               }
-              await pendingProfitForAdmin.delete(chatIdStr)
+              await pendingProfitForAdmin.delete()
             }
           }
         }

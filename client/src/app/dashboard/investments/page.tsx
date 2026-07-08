@@ -95,9 +95,9 @@ export default function InvestmentsPage() {
       if (latest && (latest.status === 'WAITING_FOR_PAYMENT_DETAILS' || latest.status === 'PAYMENT_DETAILS_SENT' || latest.status === 'PAYMENT_SUBMITTED')) {
         const payment = {
           depositId: latest.id,
-          ecocashNumber: latest.ecocashNumber,
-          ecocashAccountName: latest.ecocashAccountName,
-          ecocashReference: latest.ecocashReference,
+          ecocashNumber: null,
+          ecocashAccountName: null,
+          ecocashReference: null,
         }
         setPendingPayment(payment)
         pendingPaymentRef.current = payment
@@ -188,12 +188,14 @@ export default function InvestmentsPage() {
         }
       }
       if (data.type === 'profit_updated') {
-        setInvestments(prev => prev.map(inv => 
-          inv.investmentId === data.investmentId 
-            ? { ...inv, profitAmount: data.profitAmount, currentBalance: data.currentBalance, profitPercentage: data.profitPercentage }
-            : inv
-        ))
-        toast.success(`Profit updated: +$${data.profitAmount.toFixed(2)}`)
+        if (data.investmentId && data.profitAmount != null) {
+          setInvestments(prev => prev.map(inv => 
+            inv.investmentId === data.investmentId 
+              ? { ...inv, profitAmount: data.profitAmount, currentBalance: data.currentBalance ?? inv.currentBalance, profitPercentage: data.profitPercentage ?? inv.profitPercentage }
+              : inv
+          ))
+          toast.success(`Profit updated: +$${Number(data.profitAmount).toFixed(2)}`)
+        }
       }
     }
     

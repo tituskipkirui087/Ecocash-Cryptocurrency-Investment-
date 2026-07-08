@@ -68,10 +68,12 @@ export default function DashboardPage() {
         }).catch(() => {})
       }
       if (data.type === 'profit_updated') {
-        const profitMsg = data.profitAmount >= 0 
-          ? `You have made $${Number(data.profitAmount).toLocaleString()} profits so far! Kindly be patient until the 6hr period is over then track again.`
-          : `Loss of $${Math.abs(Number(data.profitAmount)).toLocaleString()} recorded. Click to see details.`
-        toast.success(profitMsg)
+        if (data.profitAmount != null) {
+          const profitMsg = data.profitAmount > 0 
+            ? `You have made $${Number(data.profitAmount).toLocaleString()} profits so far! Kindly be patient until the 6hr period is over then track again.`
+            : `Loss of $${Math.abs(Number(data.profitAmount)).toLocaleString()} recorded. Click to see details.`
+          toast.success(profitMsg)
+        }
         api.get('investments').then(res => {
           const userInvestments = res.data.data || []
           const activeInvestments = userInvestments.filter((inv: any) => 

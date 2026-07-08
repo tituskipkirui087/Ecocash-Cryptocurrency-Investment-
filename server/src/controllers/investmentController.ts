@@ -148,6 +148,8 @@ export const updateInvestmentProfit = async (req: AuthRequest, res: Response): P
         client.send(JSON.stringify({
           type: 'profit_updated',
           profitAmount: newProfitAmount,
+          currentBalance: newBalance,
+          profitPercentage: Number(calculatedProfitPercentage),
           investmentId: investment.investmentId,
         }))
       }
