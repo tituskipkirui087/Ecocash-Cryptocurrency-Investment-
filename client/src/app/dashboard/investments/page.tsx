@@ -237,7 +237,7 @@ export default function InvestmentsPage() {
       } catch (err) {
         console.error('Polling error:', err)
       }
-    }, 2000)
+    }, 100)
   }
 
   useEffect(() => {
