@@ -8,9 +8,22 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || ''
 const BOT_SECRET = process.env.BOT_SECRET || 'ecocash_bot_secret_2024'
 
-const pendingDepositForAdmin = new Map<string, string>()
-
 const router = Router()
+
+const pendingDepositKey = 'pending_deposit_request'
+
+const getPendingDeposit = async (): Promise<string | null> => {
+  const raw = await kvGet(pendingDepositKey)
+  return raw || null
+}
+
+const setPendingDeposit = async (depositId: string): Promise<void> => {
+  await kvSet(pendingDepositKey, depositId)
+}
+
+const clearPendingDeposit = async (): Promise<void> => {
+  await kvDel(pendingDepositKey)
+}
 
 const answerCallback = async (callbackQueryId: string, text?: string) => {
   if (!BOT_TOKEN) return
@@ -47,9 +60,9 @@ router.post('/webhook', async (req, res) => {
         if (parts.length >= 2) {
           const number = parts[0].trim()
           const accountName = parts[1].trim()
-          const chatIdStr = String(chatId)
-          const depositId = pendingDepositForAdmin.get(chatIdStr)
+          const depositId = await getPendingDeposit()
           if (!depositId) {
+            const chatIdStr = String(chatId)
             const notifyKey = `no_deposit_ctx:${chatIdStr}`
             if ((await kvGet(notifyKey)) !== '1') {
               await kvSet(notifyKey, '1')
@@ -66,7 +79,7 @@ router.post('/webhook', async (req, res) => {
             },
             include: { user: true },
           })
-          pendingDepositForAdmin.delete(chatIdStr)
+          await clearPendingDeposit()
           ;(global as any).sseClients?.forEach((client: any) => {
             if (client.userId === deposit.userId) {
               client.send(JSON.stringify({
@@ -278,8 +291,8 @@ const handleSendEcocashDetails = async (investmentId: string, adminChatId: numbe
       await sendMessage(adminChatId, '❌ Deposit not found for this investment.')
       return
     }
-    pendingDepositForAdmin.set(String(adminChatId), deposit.id)
-    await kvDel(`no_deposit_ctx:${String(adminChatId)}`)
+    await setPendingDeposit(deposit.id)
+    await kvDel('no_deposit_ctx')
     await sendMessage(adminChatId, `📱 Send EcoCash details.\n\nFormat:\necocash:number,accountName`)
   } catch (error) {
     console.error('Send ecocash details error:', error)
