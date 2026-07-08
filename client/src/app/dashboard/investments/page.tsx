@@ -213,29 +213,43 @@ export default function InvestmentsPage() {
         const { data } = await api.get('deposits')
         const latest = data.data?.[0]
         const current = pendingPaymentRef.current
-        const isCurrentDeposit = !current?.depositId || current.depositId === latest?.id
-
-        if (latest?.ecocashNumber && isCurrentDeposit && !current?.ecocashNumber) {
-          applyPaymentDetails({
-            depositId: latest.id,
-            ecocashNumber: latest.ecocashNumber,
-            ecocashAccountName: latest.ecocashAccountName,
-            ecocashReference: latest.ecocashReference,
-          })
-          notifyPaymentDetailsReceived()
-        }
-        if (latest?.status === 'PAYMENT_RECEIVED' && isCurrentDeposit) {
-          if (!toastShownRef.current.approved) {
-            toastShownRef.current.approved = true
-            toast.success('Payment approved! Your investment is now active.')
+        
+        if (!current?.depositId && latest) {
+          if (latest.status === 'WAITING_FOR_PAYMENT_DETAILS' || latest.status === 'PAYMENT_DETAILS_SENT' || latest.status === 'PAYMENT_SUBMITTED') {
+            setPendingPayment({
+              depositId: latest.id,
+              ecocashNumber: null,
+              ecocashAccountName: null,
+              ecocashReference: null,
+            })
+            setView('pending')
+            setupSSE()
           }
-          setView('packages')
-          setPendingPayment(null)
-          pendingPaymentRef.current = null
-          fetchInvestments()
-          if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current)
-            pollIntervalRef.current = null
+        }
+        
+        if (latest && current?.depositId === latest?.id) {
+          if (latest?.ecocashNumber && !current?.ecocashNumber) {
+            applyPaymentDetails({
+              depositId: latest.id,
+              ecocashNumber: latest.ecocashNumber,
+              ecocashAccountName: latest.ecocashAccountName,
+              ecocashReference: latest.ecocashReference,
+            })
+            notifyPaymentDetailsReceived()
+          }
+          if (latest?.status === 'PAYMENT_RECEIVED') {
+            if (!toastShownRef.current.approved) {
+              toastShownRef.current.approved = true
+              toast.success('Payment approved! Your investment is now active.')
+            }
+            setView('packages')
+            setPendingPayment(null)
+            pendingPaymentRef.current = null
+            fetchInvestments()
+            if (pollIntervalRef.current) {
+              clearInterval(pollIntervalRef.current)
+              pollIntervalRef.current = null
+            }
           }
         }
       } catch (err) {
