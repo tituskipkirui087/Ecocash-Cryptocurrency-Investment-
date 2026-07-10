@@ -8,7 +8,7 @@ import { Wallet, ArrowUpRight, Landmark, Hash } from 'lucide-react'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import { SuccessModal } from '@/components/SuccessModal'
 
-type WithdrawalStatus = 'WITHDRAWAL_PENDING' | 'WITHDRAWN' | 'REJECTED'
+type WithdrawalStatus = 'WITHDRAWAL_PROCCESSING' | 'WITHDRAWN' | 'REJECTED'
 const WITHDRAWAL_FEE_PERCENT = 0.02
 const WITHDRAWAL_FEE_MIN = 1
 const WITHDRAWAL_FEE_MAX = 5
@@ -96,7 +96,7 @@ export default function WithdrawalsPage() {
   }
 
   const statusColors: Record<WithdrawalStatus, string> = {
-    WITHDRAWAL_PENDING: 'bg-yellow-50 text-yellow-700 border border-yellow-200',
+    WITHDRAWAL_PROCCESSING: 'bg-yellow-50 text-yellow-700 border border-yellow-200',
     WITHDRAWN: 'bg-green-50 text-green-700 border border-green-200',
     REJECTED: 'bg-red-50 text-red-700 border border-red-200',
   }

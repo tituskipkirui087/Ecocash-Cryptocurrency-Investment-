@@ -529,7 +529,6 @@ export default function InvestmentsPage() {
                   type="file"
                   id="receipt-upload"
                   accept="image/*"
-                  capture="environment"
                   className="hidden"
                   onChange={async (e) => {
                     const file = e.target.files?.[0]
