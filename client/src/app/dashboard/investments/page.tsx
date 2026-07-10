@@ -485,7 +485,16 @@ export default function InvestmentsPage() {
             )}
           </div>
           
-          <p className="text-sm text-gray-600">Your investment request has been submitted. Payment details will be sent shortly.</p>
+          <p className="text-sm text-gray-600">
+            Your investment request has been submitted. Payment details will be sent shortly.
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="ml-2 font-medium text-brand-blue hover:text-brand-sky transition-colors"
+            >
+              REFRESH
+            </button>
+          </p>
           
           {pendingPayment.ecocashNumber && (
             <div className="rounded-xl bg-green-50 p-4 mt-4 space-y-2">
