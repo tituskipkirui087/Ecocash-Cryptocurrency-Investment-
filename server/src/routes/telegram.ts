@@ -68,17 +68,6 @@ router.post('/webhook', async (req, res) => {
             },
             include: { user: true },
           })
-          ;(global as any).sseClients?.forEach((client: any) => {
-            if (client.userId === updatedDeposit.userId) {
-              client.send(JSON.stringify({
-                type: 'payment_details',
-                depositId: updatedDeposit.id,
-                ecocashNumber: number,
-                ecocashAccountName: accountName,
-                ecocashReference: updatedDeposit.ecocashReference,
-              }))
-            }
-          })
           if (updatedDeposit?.user?.telegramChatId) {
             await sendMessage(Number(updatedDeposit.user.telegramChatId),
               `💰 Payment Details Received!\n\nEcoCash Number: ${number}\nAccount Name: ${accountName}\n\nPlease make the payment and upload proof.`)
@@ -107,17 +96,6 @@ router.post('/webhook', async (req, res) => {
                     profitPercentage: calculatedPercentage,
                   },
                   include: { user: true },
-                })
-                ;(global as any).sseClients?.forEach((client: any) => {
-                  if (client.userId === updated.userId) {
-                    client.send(JSON.stringify({
-                      type: 'profit_updated',
-                      profitAmount: updated.profitAmount,
-                      currentBalance: updated.currentBalance,
-                      investmentId: updated.investmentId,
-                      profitPercentage: updated.profitPercentage,
-                    }))
-                  }
                 })
                 await sendMessage(chatId, `✅ Profit of $${profitAmount} added to investment ${updated.investmentId}. New balance: $${newBalance.toFixed(2)}`)
               } else {
@@ -282,15 +260,6 @@ const handleApproveDeposit = async (depositId: string, adminChatId: number) => {
       await sendMessage(Number(deposit.user.telegramChatId),
         `✅ Payment confirmed! Your investment is now active.\n\nInvestment: #${deposit.investment?.investmentId || 'N/A'}`)
     }
-    ;(global as any).sseClients?.forEach((client: any) => {
-      if (client.userId === deposit.userId) {
-        client.send(JSON.stringify({
-          type: 'payment_approved',
-          status: 'PAYMENT_RECEIVED',
-          depositId: deposit.id,
-        }))
-      }
-    })
     await sendMessage(adminChatId, '✅ Payment approved and user notified!')
   } catch (error) {
     console.error('Approve deposit error:', error)

@@ -27,7 +27,6 @@ export default function InvestmentsPage() {
   const [selectedPlan, setSelectedPlan] = useState<any | null>(null)
   const [formData, setFormData] = useState({ amount: '', paymentMethod: 'ECOCASH', planId: '' })
   const [pendingPayment, setPendingPayment] = useState<PendingPayment | null>(null)
-  const eventSourceRef = useRef<EventSource | null>(null)
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const pendingPaymentRef = useRef<PendingPayment | null>(null)
   const toastShownRef = useRef({ details: false, approved: false })
@@ -106,7 +105,7 @@ export default function InvestmentsPage() {
         setPendingPayment(payment)
         pendingPaymentRef.current = payment
         setView('pending')
-        setupSSE()
+        startPaymentPolling()
       }
     } catch (err) {
       console.error('Check pending error:', err)
@@ -138,7 +137,7 @@ export default function InvestmentsPage() {
       setPendingPayment(payment)
       pendingPaymentRef.current = payment
       
-      setupSSE()
+      startPaymentPolling()
       
       toast.success('Investment request submitted! Waiting for payment details...')
       setView('pending')
@@ -153,60 +152,8 @@ export default function InvestmentsPage() {
     }
   }
 
-  const setupSSE = () => {
-    const token = localStorage.getItem('token')
-    if (!token) return
-    if (eventSourceRef.current && eventSourceRef.current.readyState !== 2) return
-
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
-    const sseUrl = `${apiUrl.replace(/\/$/, '')}/sse/payment-updates?token=${token}`
-    console.log('Setting up SSE connection:', sseUrl)
-    const source = new EventSource(sseUrl)
-    eventSourceRef.current = source
-    source.onopen = () => console.log('SSE connected')
-    source.onerror = (e) => {
-      console.error('SSE error:', e)
-    }
-    source.onmessage = (e) => {
-      const data = JSON.parse(e.data)
-      console.log('SSE message received:', data)
-      if (data.type === 'payment_details') {
-        applyPaymentDetails({
-          depositId: data.depositId,
-          ecocashNumber: data.ecocashNumber,
-          ecocashAccountName: data.ecocashAccountName,
-          ecocashReference: data.ecocashReference,
-        })
-        notifyPaymentDetailsReceived()
-      }
-      if (data.type === 'payment_approved' && !toastShownRef.current.approved) {
-        toastShownRef.current.approved = true
-        toast.success('Payment approved! Your investment is now active.')
-        setView('packages')
-        setPendingPayment(null)
-        pendingPaymentRef.current = null
-        fetchInvestments()
-        if (pollIntervalRef.current) {
-          clearInterval(pollIntervalRef.current)
-          pollIntervalRef.current = null
-        }
-      }
-      if (data.type === 'profit_updated') {
-        if (data.investmentId && data.profitAmount != null) {
-          setInvestments(prev => prev.map(inv => 
-            inv.investmentId === data.investmentId 
-              ? { ...inv, profitAmount: data.profitAmount, currentBalance: data.currentBalance ?? inv.currentBalance, profitPercentage: data.profitPercentage ?? inv.profitPercentage }
-              : inv
-          ))
-          toast.success(`Profit updated: +$${Number(data.profitAmount).toFixed(2)}`)
-        }
-      }
-    }
-    
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current)
-      pollIntervalRef.current = null
-    }
+  const startPaymentPolling = () => {
+    if (pollIntervalRef.current) return
 
     pollIntervalRef.current = setInterval(async () => {
       try {
@@ -223,7 +170,6 @@ export default function InvestmentsPage() {
               ecocashReference: null,
             })
             setView('pending')
-            setupSSE()
           }
         }
         
@@ -255,15 +201,11 @@ export default function InvestmentsPage() {
       } catch (err) {
         console.error('Polling error:', err)
       }
-    }, 100)
+    }, 5_000)
   }
 
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close()
-        eventSourceRef.current = null
-      }
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current)
         pollIntervalRef.current = null

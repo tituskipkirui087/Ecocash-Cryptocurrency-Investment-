@@ -5,7 +5,7 @@ const nextConfig = {
   },
   async rewrites() {
     return [
-      { source: "/api/:path*", destination: "https://ecocash-investment-server.vercel.app/api/:path*" }
+      { source: "/api/:path*", destination: "https://ecocash-api.onrender.com/api/:path*" }
     ]
   },
 }

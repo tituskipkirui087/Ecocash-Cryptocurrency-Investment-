@@ -142,19 +142,6 @@ export const updateInvestmentProfit = async (req: AuthRequest, res: Response): P
       include: { user: true },
     })
 
-    // Notify user via SSE
-    ;(global as any).sseClients?.forEach((client: any) => {
-      if (client.userId === investment.userId) {
-        client.send(JSON.stringify({
-          type: 'profit_updated',
-          profitAmount: newProfitAmount,
-          currentBalance: newBalance,
-          profitPercentage: Number(calculatedProfitPercentage),
-          investmentId: investment.investmentId,
-        }))
-      }
-    })
-
     res.status(200).json({ success: true, message: 'Profit updated', data: investment })
   } catch (error) {
     console.error('Update profit error:', error)
@@ -173,17 +160,6 @@ export const startTrade = async (req: AuthRequest, res: Response): Promise<void>
         tradeStartDate: new Date(),
       },
       include: { user: true },
-    })
-
-    // Notify user via SSE
-    ;(global as any).sseClients?.forEach((client: any) => {
-      if (client.userId === investment.userId) {
-        client.send(JSON.stringify({
-          type: 'trade_started',
-          status: 'ACTIVE_TRADE',
-          investmentId: investment.investmentId,
-        }))
-      }
     })
 
     res.status(200).json({ success: true, message: 'Trade started', data: investment })

@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
 import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Zap, TrendingDown } from 'lucide-react'
@@ -18,7 +18,6 @@ export default function DashboardPage() {
   })
   const [recentActivity, setRecentActivity] = useState<any[]>([])
   const [requestingProfit, setRequestingProfit] = useState(false)
-  const eventSourceRef = useRef<EventSource | null>(null)
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -42,53 +41,10 @@ export default function DashboardPage() {
         console.error(err)
       }
     }
-    if (token) fetchStats()
-  }, [token])
-
-  useEffect(() => {
     if (!token) return
-    const source = new EventSource(`${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, '').replace(/\/api$/, '')}/api/sse/payment-updates?token=${token}`)
-    eventSourceRef.current = source
-    source.onmessage = (e) => {
-      const data = JSON.parse(e.data)
-      if (data.type === 'trade_started' || data.type === 'payment_approved') {
-        toast.success('Your investment status updated!')
-        api.get('investments').then(res => {
-          const userInvestments = res.data.data || []
-          const activeInvestments = userInvestments.filter((inv: any) => 
-            inv.status === 'PAYMENT_RECEIVED' || inv.status === 'ACTIVE_TRADE'
-          )
-          const activeCount = activeInvestments.length
-          setStats({
-            totalDeposited: activeInvestments.reduce((sum: number, inv: any) => sum + Number(inv.depositAmount), 0),
-            activeInvestments: activeCount,
-            currentBalance: activeInvestments.reduce((sum: number, inv: any) => sum + Number(inv.currentBalance), 0),
-            totalProfit: activeInvestments.reduce((sum: number, inv: any) => sum + Number(inv.profitAmount || 0), 0),
-          })
-        }).catch(() => {})
-      }
-      if (data.type === 'profit_updated') {
-        if (data.profitAmount != null) {
-          const profitMsg = data.profitAmount > 0 
-            ? `You have made $${Number(data.profitAmount).toLocaleString()} profits so far! Kindly be patient until the 6hr period is over then track again.`
-            : `Loss of $${Math.abs(Number(data.profitAmount)).toLocaleString()} recorded. Click to see details.`
-          toast.success(profitMsg)
-        }
-        api.get('investments').then(res => {
-          const userInvestments = res.data.data || []
-          const activeInvestments = userInvestments.filter((inv: any) => 
-            inv.status === 'PAYMENT_RECEIVED' || inv.status === 'ACTIVE_TRADE'
-          )
-          setStats({
-            totalDeposited: activeInvestments.reduce((sum: number, inv: any) => sum + Number(inv.depositAmount), 0),
-            activeInvestments: activeInvestments.length,
-            currentBalance: activeInvestments.reduce((sum: number, inv: any) => sum + Number(inv.currentBalance), 0),
-            totalProfit: activeInvestments.reduce((sum: number, inv: any) => sum + Number(inv.profitAmount || 0), 0),
-          })
-        }).catch(() => {})
-      }
-    }
-    return () => source.close()
+    fetchStats()
+    const interval = window.setInterval(fetchStats, 10_000)
+    return () => window.clearInterval(interval)
   }, [token])
 
   useEffect(() => {

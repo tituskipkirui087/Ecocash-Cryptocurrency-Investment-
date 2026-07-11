@@ -138,22 +138,6 @@ export const updateDepositStatus = async (req: AuthRequest, res: Response): Prom
       },
     })
 
-    console.log('Deposit updated, checking SSE clients:', (global as any).sseClients?.length)
-    
-    ;(global as any).sseClients?.forEach((client: any) => {
-      console.log('Checking SSE client for userId:', client.userId, 'target userId:', updatedDeposit.userId)
-      if (client.userId === updatedDeposit.userId) {
-        console.log('Sending payment details to user via SSE')
-        client.send(JSON.stringify({
-          type: 'payment_details',
-          depositId: updatedDeposit.id,
-          ecocashNumber: validated.ecocashNumber,
-          ecocashAccountName: validated.ecocashAccountName,
-          ecocashReference: validated.ecocashReference,
-        }))
-      }
-    })
-
     res.status(200).json({ success: true, message: 'Deposit status updated', data: updatedDeposit })
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -191,17 +175,6 @@ export const approveDeposit = async (req: AuthRequest, res: Response): Promise<v
         data: { status: 'PAYMENT_RECEIVED' },
       })
     }
-
-    // Notify user via SSE
-    ;(global as any).sseClients?.forEach((client: any) => {
-      if (client.userId === updatedDeposit.userId) {
-        client.send(JSON.stringify({
-          type: 'payment_approved',
-          status: 'PAYMENT_RECEIVED',
-          depositId: updatedDeposit.id,
-        }))
-      }
-    })
 
     res.status(200).json({ 
       success: true, 

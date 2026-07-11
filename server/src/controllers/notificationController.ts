@@ -76,18 +76,6 @@ export const updateLatestProfit = async (req: Request, res: Response): Promise<v
       include: { user: true },
     })
 
-    ;(global as any).sseClients?.forEach((client: any) => {
-      if (client.userId === updated.userId) {
-        client.send(JSON.stringify({
-          type: 'profit_updated',
-          profitAmount: updated.profitAmount,
-          currentBalance: updated.currentBalance,
-          investmentId: updated.investmentId,
-          profitPercentage: updated.profitPercentage,
-        }))
-      }
-    })
-
     res.status(200).json({ success: true, data: updated })
   } catch (error: any) {
     console.error('Update latest profit error:', error)

@@ -91,19 +91,35 @@ After seeding:
 
 ## Deployment
 
-1. Build both projects:
-   ```bash
-   npm run build
-   ```
+### Render (Recommended for Server)
 
-2. Configure Nginx as reverse proxy
-3. Set up SSL certificate
-4. Run with PM2:
-   ```bash
-   npx tsc -p server/tsconfig.json
-   node server/dist/index.js
-   cd client && npm start
-   ```
+1. Create a `render.yaml` in the server directory (already included in repo)
+2. Go to [render.com](https://render.com) and create a new Web Service
+3. Connect your GitHub repository
+4. Set root directory to `/server`
+5. Add environment variables in Render dashboard:
+   - `DATABASE_URL` - Your Neon database connection string
+   - `TELEGRAM_BOT_TOKEN` - Telegram bot token
+   - `TELEGRAM_ADMIN_CHAT_ID` - Admin chat ID
+   - `JWT_SECRET` - Strong JWT secret
+   - `BOT_SECRET` - Bot secret for verification
+   - `FRONTEND_URL` - `https://ecocash-investment-copmanyzm.vercel.app`
+6. Deploy - Render will auto-detect from `render.yaml`
+
+### Vercel (For Frontend)
+
+1. Deploy the `client` directory to Vercel
+2. Set environment variable: `NEXT_PUBLIC_API_URL=https://ecocash-api.onrender.com/api`
+
+### Production Build
+
+```bash
+# Backend
+cd server && npm run build
+
+# Frontend  
+cd client && npm run build
+```
 
 ## Environment Variables
 
