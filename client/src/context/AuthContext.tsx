@@ -43,11 +43,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedToken = localStorage.getItem('token')
     const storedUser = localStorage.getItem('user')
-    console.log('Auth init - token:', !!storedToken, 'user:', storedUser ? JSON.parse(storedUser) : null)
     if (storedToken && storedUser) {
-      setToken(storedToken)
-      const parsedUser = JSON.parse(storedUser)
-      setUser(parsedUser)
+      try {
+        setToken(storedToken)
+        const parsedUser = JSON.parse(storedUser)
+        setUser(parsedUser)
+      } catch (e) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+      }
     }
     setLoading(false)
   }, [])
