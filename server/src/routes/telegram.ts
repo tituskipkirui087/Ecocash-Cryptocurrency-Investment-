@@ -21,10 +21,11 @@ const answerCallback = async (callbackQueryId: string, text?: string) => {
 }
 
 router.post('/webhook', async (req, res) => {
-  try {
-    const body = req.body
+    res.sendStatus(200)
+    try {
+      const body = req.body
 
-    if (body.message && body.message.text) {
+      if (body.message && body.message.text) {
       const chatId = body.message.chat.id
       const text = body.message.text
 
@@ -170,13 +171,10 @@ router.post('/webhook', async (req, res) => {
         await answerCallback(callbackQueryId, 'Unknown action')
       }
     }
-
-    res.sendStatus(200)
-  } catch (error) {
-    console.error('Telegram webhook error:', error)
-    res.sendStatus(200)
-  }
-})
+    } catch (error) {
+      console.error('Telegram webhook error:', error)
+    }
+  })
 
 const sendMessage = async (chatId: number, text: string) => {
   if (!BOT_TOKEN) return
