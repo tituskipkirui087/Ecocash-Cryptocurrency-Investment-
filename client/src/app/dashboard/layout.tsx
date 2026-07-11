@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Wallet, User, LogOut, Menu, X, Home, ArrowUpRight } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Wallet, User, LogOut, Menu, X, Home, ArrowUpRight, BarChart3 } from 'lucide-react'
 import { useState } from 'react'
 
 const navItems = [
   { href: '/dashboard', label: 'Home', icon: Home },
   { href: '/dashboard/investments', label: 'Invest', icon: TrendingUp },
+  { href: '/dashboard/trades', label: 'Trades', icon: BarChart3 },
   { href: '/dashboard/deposits', label: 'Transactions', icon: Wallet },
   { href: '/dashboard/profile', label: 'Profile', icon: User },
 ]
