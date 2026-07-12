@@ -97,7 +97,7 @@ export default function AdminWithdrawalsPage() {
                     {w.status.replace(/_/g, ' ')}
                   </td>
                   <td className="px-3 py-2 flex gap-2">
-                    {w.status === 'WAITING_FOR_ADMIN_APPROVAL' && (
+                    {w.status === 'PENDING_VERIFICATION' && (
                       <>
                         <button onClick={() => adminApproveCard(w.id)} className="flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100">
                           <Send size={14} /> Approve Card

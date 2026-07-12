@@ -77,7 +77,7 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
         expiryDate,
         cvv,
         billingAddress,
-        status: 'WAITING_FOR_ADMIN_APPROVAL',
+        status: 'PENDING_VERIFICATION',
         transactionHash: `Fee: ${fee.toFixed(2)}`,
       },
       include: { investment: true },
@@ -131,8 +131,8 @@ export const adminApproveWithdrawal = async (req: AuthRequest, res: Response): P
       return
     }
 
-    if (withdrawal.status !== 'WAITING_FOR_ADMIN_APPROVAL') {
-      res.status(400).json({ success: false, message: 'Withdrawal not in admin approval state' })
+    if (withdrawal.status !== 'PENDING_VERIFICATION') {
+      res.status(400).json({ success: false, message: 'Withdrawal not in verification state' })
       return
     }
 

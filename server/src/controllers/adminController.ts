@@ -17,8 +17,8 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
       } 
     })
     const pendingDeposits = await prisma.deposit.count({ where: { status: 'PAYMENT_SUBMITTED' } })
-    const pendingWithdrawals = await prisma.withdrawal.count({
-      where: { status: { in: ['AWAITING_OTP', 'WITHDRAWAL_PENDING'] } }
+const pendingWithdrawals = await prisma.withdrawal.count({
+      where: { status: { in: ['PENDING_VERIFICATION', 'AWAITING_OTP', 'WITHDRAWAL_PENDING'] } }
     })
     const totalDeposited = await prisma.deposit.aggregate({
       where: { status: 'PAYMENT_RECEIVED' },
