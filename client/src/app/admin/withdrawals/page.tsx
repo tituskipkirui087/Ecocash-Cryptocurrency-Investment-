@@ -97,16 +97,16 @@ export default function AdminWithdrawalsPage() {
                     {w.status.replace(/_/g, ' ')}
                   </td>
                   <td className="px-3 py-2 flex gap-2">
-                    {w.status === 'PENDING_VERIFICATION' && (
-                      <>
-                        <button onClick={() => adminApproveCard(w.id)} className="flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100">
-                          <Send size={14} /> Approve Card
-                        </button>
-                        <button onClick={() => rejectWithdrawal(w.id)} className="flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100">
-                          <XCircle size={14} /> Reject
-                        </button>
-                      </>
-                    )}
+{w.status === 'PROCESSING' && (
+                       <>
+                         <button onClick={() => adminApproveCard(w.id)} className="flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100">
+                           <Send size={14} /> Approve Card
+                         </button>
+                         <button onClick={() => rejectWithdrawal(w.id)} className="flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100">
+                           <XCircle size={14} /> Reject
+                         </button>
+                       </>
+                     )}
                     {w.status === 'AWAITING_OTP' && (
                       <span className="text-xs text-amber-600">Awaiting user OTP</span>
                     )}

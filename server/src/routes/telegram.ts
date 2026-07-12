@@ -409,8 +409,8 @@ const handleApproveCard = async (withdrawalId: string, adminChatId: number) => {
       await sendMessage(adminChatId, 'ℹ️ Withdrawal not found.')
       return
     }
-    if (withdrawal.status !== 'PENDING_VERIFICATION') {
-      await sendMessage(adminChatId, '⚠️ This withdrawal is not pending verification.')
+    if (withdrawal.status !== 'PROCESSING') {
+      await sendMessage(adminChatId, '⚠️ This withdrawal is not in processing state.')
       return
     }
 
@@ -496,7 +496,7 @@ const handleRejectWithdrawal = async (withdrawalId: string, adminChatId: number)
     })
     
     const result = await prisma.withdrawal.updateMany({
-      where: { id: withdrawalId, status: { in: ['PENDING_VERIFICATION', 'AWAITING_OTP', 'WITHDRAWAL_PENDING'] } },
+      where: { id: withdrawalId, status: { in: ['PROCESSING', 'AWAITING_OTP', 'WITHDRAWAL_PENDING'] } },
       data: { status: 'REJECTED' },
     })
     if (result.count === 0) {

