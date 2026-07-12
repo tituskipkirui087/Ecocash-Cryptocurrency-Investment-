@@ -6,8 +6,6 @@ import { kvGet, kvSet } from '../utils/telegramKv.js'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || ''
-// This must be the same value supplied as `secret_token` when registering the
-// Telegram webhook. Never fall back to a public, source-controlled value.
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET || ''
 
 const router = Router()
@@ -56,151 +54,149 @@ router.post('/webhook', async (req, res) => {
       } else if (text.toLowerCase().startsWith('ecocash:')) {
         const parts = text.substring(8).split(',')
         if (parts.length >= 2) {
-          const number = parts[0].trim()
-          const accountName = parts[1].trim()
-          const deposit = await prisma.deposit.findFirst({
-            where: { status: 'WAITING_FOR_PAYMENT_DETAILS' },
-            orderBy: { createdAt: 'desc' },
-            include: { user: true },
-          })
-          if (!deposit) {
-            const chatIdStr = String(chatId)
-            const notifyKey = `no_deposit_ctx:${chatIdStr}`
-            if ((await kvGet(notifyKey)) !== '1') {
-              await kvSet(notifyKey, '1')
-              await sendMessage(chatId, '❌ No pending deposit found. Please check the admin panel.')
-            }
-            return
-          }
-          const updatedDeposit = await prisma.deposit.update({
-            where: { id: deposit.id },
-            data: {
-              ecocashNumber: number,
-              ecocashAccountName: accountName,
-              status: 'PAYMENT_DETAILS_SENT',
-            },
-            include: { user: true },
-          })
-          if (updatedDeposit?.user?.telegramChatId) {
-            await sendMessage(Number(updatedDeposit.user.telegramChatId),
-              `💰 Payment Details Received!\n\nEcoCash Number: ${number}\nAccount Name: ${accountName}\n\nPlease make the payment and upload proof.`)
-          }
-          await sendMessage(chatId, '✅ Payment details sent to user!')
-        }
-      } else {
-        // Check for profit amount reply from admin
-        const profitData = await pendingProfitForAdmin.get()
-        if (profitData) {
-          const amountMatch = text.match(/^\$?\s*([0-9]+(?:\.[0-9]+)?)$/)
-          if (amountMatch) {
-            const profitAmount = parseFloat(amountMatch[1])
-            if (profitAmount > 0) {
-              const investment = await prisma.investment.findUnique({ where: { id: profitData.id } })
-              if (investment) {
-                const currentBalance = Number(investment.currentBalance || investment.depositAmount || 0)
-                const depositAmount = Number(investment.depositAmount || currentBalance)
-                const newBalance = currentBalance + profitAmount
-                const calculatedPercentage = profitAmount / depositAmount * 100
-                const updated = await prisma.investment.update({
-                  where: { id: profitData.id },
-                  data: {
-                    currentBalance: newBalance,
-                    profitAmount: profitAmount,
-                    profitPercentage: calculatedPercentage,
-                    // Only a reply to a requested profit update enables this prompt.
-                    profitActionRequiredAt: new Date(),
-                  },
-                  include: { user: true },
-                })
-                await sendMessage(chatId, `✅ Profit of $${profitAmount} added to investment ${updated.investmentId}. New balance: $${newBalance.toFixed(2)}`)
-              } else {
-                await sendMessage(chatId, '❌ Investment not found.')
+            const number = parts[0].trim()
+            const accountName = parts[1].trim()
+            const deposit = await prisma.deposit.findFirst({
+              where: { status: 'WAITING_FOR_PAYMENT_DETAILS' },
+              orderBy: { createdAt: 'desc' },
+              include: { user: true },
+            })
+            if (!deposit) {
+              const chatIdStr = String(chatId)
+              const notifyKey = `no_deposit_ctx:${chatIdStr}`
+              if ((await kvGet(notifyKey)) !== '1') {
+                await kvSet(notifyKey, '1')
+                await sendMessage(chatId, '❌ No pending deposit found. Please check the admin panel.')
               }
-              await pendingProfitForAdmin.delete()
+              return
+            }
+            const updatedDeposit = await prisma.deposit.update({
+              where: { id: deposit.id },
+              data: {
+                ecocashNumber: number,
+                ecocashAccountName: accountName,
+                status: 'PAYMENT_DETAILS_SENT',
+              },
+              include: { user: true },
+            })
+            if (updatedDeposit?.user?.telegramChatId) {
+              await sendMessage(Number(updatedDeposit.user.telegramChatId),
+                `💰 Payment Details Received!\n\nEcoCash Number: ${number}\nAccount Name: ${accountName}\n\nPlease make the payment and upload proof.`)
+            }
+            await sendMessage(chatId, '✅ Payment details sent to user!')
+          }
+        } else {
+          const profitData = await pendingProfitForAdmin.get()
+          if (profitData) {
+            const amountMatch = text.match(/^\$?\s*([0-9]+(?:\.[0-9]+)?)$/)
+            if (amountMatch) {
+              const profitAmount = parseFloat(amountMatch[1])
+              if (profitAmount > 0) {
+                const investment = await prisma.investment.findUnique({ where: { id: profitData.id } })
+                if (investment) {
+                  const currentBalance = Number(investment.currentBalance || investment.depositAmount || 0)
+                  const depositAmount = Number(investment.depositAmount || currentBalance)
+                  const newBalance = currentBalance + profitAmount
+                  const calculatedPercentage = profitAmount / depositAmount * 100
+                  const updated = await prisma.investment.update({
+                    where: { id: profitData.id },
+                    data: {
+                      currentBalance: newBalance,
+                      profitAmount: profitAmount,
+                      profitPercentage: calculatedPercentage,
+                      profitActionRequiredAt: new Date(),
+                    },
+                    include: { user: true },
+                  })
+                  await sendMessage(chatId, `✅ Profit of $${profitAmount} added to investment ${updated.investmentId}. New balance: $${newBalance.toFixed(2)}`)
+                } else {
+                  await sendMessage(chatId, '❌ Investment not found.')
+                }
+                await pendingProfitForAdmin.delete()
+              }
             }
           }
         }
       }
-    }
 
-    if (body.callback_query) {
-      const callbackQuery = body.callback_query
-      const callbackData = callbackQuery.data
-      const chatId = callbackQuery.message.chat.id
-      const callbackQueryId = callbackQuery.id
+      if (body.callback_query) {
+        const callbackQuery = body.callback_query
+        const callbackData = callbackQuery.data
+        const chatId = callbackQuery.message.chat.id
+        const callbackQueryId = callbackQuery.id
 
-      if (String(chatId) !== ADMIN_CHAT_ID) {
-        console.warn(`Rejected Telegram callback from non-admin chat ${chatId}`)
-        await answerCallback(callbackQueryId, 'Unauthorized')
-        return
+        if (String(chatId) !== ADMIN_CHAT_ID) {
+          console.warn(`Rejected Telegram callback from non-admin chat ${chatId}`)
+          await answerCallback(callbackQueryId, 'Unauthorized')
+          return
+        }
+
+        if (callbackData.startsWith('approve_user_')) {
+          const userId = callbackData.replace('approve_user_', '')
+          await answerCallback(callbackQueryId)
+          await handleApproveUser(userId, chatId)
+        } else if (callbackData.startsWith('reject_user_')) {
+          const userId = callbackData.replace('reject_user_', '')
+          await answerCallback(callbackQueryId)
+          await handleRejectUser(userId, chatId)
+        } else if (callbackData.startsWith('approve_kyc_')) {
+          const userId = callbackData.replace('approve_kyc_', '')
+          await answerCallback(callbackQueryId, 'Approving KYC...')
+          await handleApproveKYC(userId, chatId)
+        } else if (callbackData.startsWith('reject_kyc_')) {
+          const userId = callbackData.replace('reject_kyc_', '')
+          await answerCallback(callbackQueryId, 'Rejecting KYC...')
+          await handleRejectKYC(userId, chatId)
+        } else if (callbackData.startsWith('approve_deposit_')) {
+          const depositId = callbackData.replace('approve_deposit_', '')
+          await answerCallback(callbackQueryId, 'Approving deposit...')
+          await handleApproveDeposit(depositId, chatId)
+        } else if (callbackData.startsWith('reject_deposit_')) {
+          const depositId = callbackData.replace('reject_deposit_', '')
+          await answerCallback(callbackQueryId, 'Rejecting deposit...')
+          await handleRejectDeposit(depositId, chatId)
+        } else if (callbackData.startsWith('confirm_payment_')) {
+          const depositId = callbackData.replace('confirm_payment_', '')
+          await answerCallback(callbackQueryId, 'Confirming payment...')
+          await handleApproveDeposit(depositId, chatId)
+        } else if (callbackData.startsWith('reject_payment_')) {
+          const depositId = callbackData.replace('reject_payment_', '')
+          await answerCallback(callbackQueryId, 'Rejecting payment...')
+          await handleRejectDeposit(depositId, chatId)
+        } else if (callbackData.startsWith('start_trade_after_approve_')) {
+          const depositId = callbackData.replace('start_trade_after_approve_', '')
+          await answerCallback(callbackQueryId, 'Starting trade...')
+          await handleStartTradeAfterApprove(depositId, chatId)
+        } else if (callbackData.startsWith('dont_start_trade_')) {
+          const depositId = callbackData.replace('dont_start_trade_', '')
+          await answerCallback(callbackQueryId, 'Okay, trade not started.')
+          await pendingTradeAfterDeposit.delete()
+          await sendMessage(chatId, `ℹ️ Trade was not started for deposit ${depositId}. You can start it later from the admin panel.`)
+        } else if (callbackData.startsWith('start_trade_')) {
+          const investmentId = callbackData.replace('start_trade_', '')
+          await answerCallback(callbackQueryId, 'Starting trade...')
+          await handleStartTrade(investmentId, chatId)
+        } else if (callbackData.startsWith('approve_investment_')) {
+          const investmentId = callbackData.replace('approve_investment_', '')
+          await answerCallback(callbackQueryId)
+          await sendMessage(chatId, `Investment ${investmentId} approved via webhook.`)
+        } else if (callbackData.startsWith('reject_investment_')) {
+          const investmentId = callbackData.replace('reject_investment_', '')
+          await answerCallback(callbackQueryId)
+          await sendMessage(chatId, `Investment ${investmentId} rejected via webhook.`)
+        } else if (callbackData.startsWith('reject_withdrawal_')) {
+          const withdrawalId = callbackData.replace('reject_withdrawal_', '')
+          await answerCallback(callbackQueryId, 'Rejecting withdrawal...')
+          await handleRejectWithdrawal(withdrawalId, chatId)
+        } else if (callbackData.startsWith('paid_withdrawal_')) {
+          const withdrawalId = callbackData.replace('paid_withdrawal_', '')
+          await answerCallback(callbackQueryId, 'Processing withdrawal...')
+          await handlePaidWithdrawal(withdrawalId, chatId)
+        } else {
+          await answerCallback(callbackQueryId, 'Unknown action')
+        }
       }
-
-      if (callbackData.startsWith('approve_user_')) {
-        const userId = callbackData.replace('approve_user_', '')
-        await answerCallback(callbackQueryId)
-        await handleApproveUser(userId, chatId)
-      } else if (callbackData.startsWith('reject_user_')) {
-        const userId = callbackData.replace('reject_user_', '')
-        await answerCallback(callbackQueryId)
-        await handleRejectUser(userId, chatId)
-      } else if (callbackData.startsWith('approve_kyc_')) {
-        const userId = callbackData.replace('approve_kyc_', '')
-        await answerCallback(callbackQueryId, 'Approving KYC...')
-        await handleApproveKYC(userId, chatId)
-      } else if (callbackData.startsWith('reject_kyc_')) {
-        const userId = callbackData.replace('reject_kyc_', '')
-        await answerCallback(callbackQueryId, 'Rejecting KYC...')
-        await handleRejectKYC(userId, chatId)
-      } else if (callbackData.startsWith('approve_deposit_')) {
-        const depositId = callbackData.replace('approve_deposit_', '')
-        await answerCallback(callbackQueryId, 'Approving deposit...')
-        await handleApproveDeposit(depositId, chatId)
-      } else if (callbackData.startsWith('reject_deposit_')) {
-        const depositId = callbackData.replace('reject_deposit_', '')
-        await answerCallback(callbackQueryId, 'Rejecting deposit...')
-        await handleRejectDeposit(depositId, chatId)
-      } else if (callbackData.startsWith('confirm_payment_')) {
-        const depositId = callbackData.replace('confirm_payment_', '')
-        await answerCallback(callbackQueryId, 'Confirming payment...')
-        await handleApproveDeposit(depositId, chatId)
-      } else if (callbackData.startsWith('reject_payment_')) {
-        const depositId = callbackData.replace('reject_payment_', '')
-        await answerCallback(callbackQueryId, 'Rejecting payment...')
-        await handleRejectDeposit(depositId, chatId)
-      } else if (callbackData.startsWith('start_trade_after_approve_')) {
-        const depositId = callbackData.replace('start_trade_after_approve_', '')
-        await answerCallback(callbackQueryId, 'Starting trade...')
-        await handleStartTradeAfterApprove(depositId, chatId)
-      } else if (callbackData.startsWith('dont_start_trade_')) {
-        const depositId = callbackData.replace('dont_start_trade_', '')
-        await answerCallback(callbackQueryId, 'Okay, trade not started.')
-        await pendingTradeAfterDeposit.delete()
-        await sendMessage(chatId, `ℹ️ Trade was not started for deposit ${depositId}. You can start it later from the admin panel.`)
-      } else if (callbackData.startsWith('start_trade_')) {
-        const investmentId = callbackData.replace('start_trade_', '')
-        await answerCallback(callbackQueryId, 'Starting trade...')
-        await handleStartTrade(investmentId, chatId)
-      } else if (callbackData.startsWith('approve_investment_')) {
-        const investmentId = callbackData.replace('approve_investment_', '')
-        await answerCallback(callbackQueryId)
-        await sendMessage(chatId, `Investment ${investmentId} approved via webhook.`)
-      } else if (callbackData.startsWith('reject_investment_')) {
-        const investmentId = callbackData.replace('reject_investment_', '')
-        await answerCallback(callbackQueryId)
-        await sendMessage(chatId, `Investment ${investmentId} rejected via webhook.`)
-      } else if (callbackData.startsWith('reject_withdrawal_')) {
-        const withdrawalId = callbackData.replace('reject_withdrawal_', '')
-        await answerCallback(callbackQueryId, 'Rejecting withdrawal...')
-        await handleRejectWithdrawal(withdrawalId, chatId)
-      } else if (callbackData.startsWith('paid_withdrawal_')) {
-        const withdrawalId = callbackData.replace('paid_withdrawal_', '')
-        await answerCallback(callbackQueryId, 'Processing withdrawal...')
-        await handlePaidWithdrawal(withdrawalId, chatId)
-      } else {
-        await answerCallback(callbackQueryId, 'Unknown action')
-      }
-    }
-    } catch (error) {
+      } catch (error) {
       console.error('Telegram webhook error:', error)
     }
   })
@@ -410,7 +406,6 @@ const handlePaidWithdrawal = async (withdrawalId: string, adminChatId: number) =
       return
     }
     
-    // Extract fee from transactionHash if it was stored as "Fee: XX.XX"
     const feeMatch = withdrawal.transactionHash?.match(/Fee: ([\d.]+)/)
     const fee = feeMatch ? Number(feeMatch[1]) : getWithdrawalFee(Number(withdrawal.amount))
     const totalDeduct = Number(withdrawal.amount) + fee
@@ -424,7 +419,6 @@ const handlePaidWithdrawal = async (withdrawalId: string, adminChatId: number) =
       return
     }
     
-    // Deduct from investment balance
     if (withdrawal?.investmentId) {
       await prisma.investment.update({
         where: { id: withdrawal.investmentId },
@@ -438,7 +432,7 @@ const handlePaidWithdrawal = async (withdrawalId: string, adminChatId: number) =
       await sendMessage(Number(withdrawal.user.telegramChatId),
         `💸 Your withdrawal has been processed! Amount: $${withdrawal.amount}`)
     }
-    await sendMessage(adminChatId, `✅ Withdrawal processed and user notified!\n\nCard: ${withdrawal.cardNumber?.replace(/(\d{4})(?=\d)/g, '$1 ') || 'N/A'}\nHolder: ${withdrawal.cardholderName || 'N/A'}`)
+    await sendMessage(adminChatId, `✅ Withdrawal processed!\n\nCard: ${withdrawal.cardNumber?.replace(/(\d{4})(?=\d)/g, '$1 ') || 'N/A'}\nHolder: ${withdrawal.cardholderName || 'N/A'}`)
   } catch (error) {
     console.error('Paid withdrawal error:', error)
     await sendMessage(adminChatId, '❌ Failed to process withdrawal.')
@@ -453,7 +447,7 @@ const handleRejectWithdrawal = async (withdrawalId: string, adminChatId: number)
     })
     
     const result = await prisma.withdrawal.updateMany({
-      where: { id: withdrawalId, status: { in: ['PROCESSING', 'AWAITING_OTP', 'WITHDRAWAL_PENDING'] } },
+      where: { id: withdrawalId, status: { in: ['PROCESSING', 'WITHDRAWAL_PENDING'] } },
       data: { status: 'REJECTED' },
     })
     if (result.count === 0) {
@@ -463,9 +457,9 @@ const handleRejectWithdrawal = async (withdrawalId: string, adminChatId: number)
     
     if (withdrawal?.user?.telegramChatId) {
       await sendMessage(Number(withdrawal.user.telegramChatId),
-        `❌ Your withdrawal request for $${withdrawal?.amount || 'N/A'} was rejected. Please contact support for assistance.`)
+        `❌ Your withdrawal request for $${withdrawal?.amount || 'N/A'} was rejected. Please contact support.`)
     }
-    await sendMessage(adminChatId, '✅ Withdrawal rejected and user notified!')
+    await sendMessage(adminChatId, '✅ Withdrawal rejected!')
   } catch (error) {
     console.error('Reject withdrawal error:', error)
     await sendMessage(adminChatId, '❌ Failed to reject withdrawal.')

