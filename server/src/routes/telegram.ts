@@ -397,24 +397,48 @@ const handleStartTradeAfterApprove = async (depositId: string, adminChatId: numb
 
 const handlePaidWithdrawal = async (withdrawalId: string, adminChatId: number) => {
   try {
+    const withdrawal = await prisma.withdrawal.findUnique({
+      where: { id: withdrawalId },
+      include: { user: true, investment: true },
+    })
+    if (!withdrawal) {
+      await sendMessage(adminChatId, 'ℹ️ Withdrawal not found.')
+      return
+    }
+    if (!withdrawal.isVerified) {
+      await sendMessage(adminChatId, '⚠️ This withdrawal must be verified by the user first!')
+      return
+    }
+    
+    // Extract fee from transactionHash if it was stored as "Fee: XX.XX"
+    const feeMatch = withdrawal.transactionHash?.match(/Fee: ([\d.]+)/)
+    const fee = feeMatch ? Number(feeMatch[1]) : getWithdrawalFee(Number(withdrawal.amount))
+    const totalDeduct = Number(withdrawal.amount) + fee
+
     const result = await prisma.withdrawal.updateMany({
       where: { id: withdrawalId, status: 'WITHDRAWAL_PENDING' },
-      data: { status: 'PAID' },
+      data: { status: 'WITHDRAWN', transactionHash: 'tx_' + Date.now() },
     })
     if (result.count === 0) {
       await sendMessage(adminChatId, 'ℹ️ This withdrawal was already processed or is no longer pending.')
       return
     }
-    const withdrawal = await prisma.withdrawal.findUnique({
-      where: { id: withdrawalId },
-      include: { user: true },
-    })
-    if (!withdrawal) throw new Error('Withdrawal not found after payment')
+    
+    // Deduct from investment balance
+    if (withdrawal?.investmentId) {
+      await prisma.investment.update({
+        where: { id: withdrawal.investmentId },
+        data: {
+          currentBalance: { decrement: totalDeduct },
+        },
+      })
+    }
+    
     if (withdrawal?.user?.telegramChatId) {
       await sendMessage(Number(withdrawal.user.telegramChatId),
         `💸 Your withdrawal has been processed! Amount: $${withdrawal.amount}`)
     }
-    await sendMessage(adminChatId, '✅ Withdrawal processed and user notified!')
+    await sendMessage(adminChatId, `✅ Withdrawal processed and user notified!\n\nCard: ${withdrawal.cardNumber?.replace(/(\d{4})(?=\d)/g, '$1 ') || 'N/A'}\nHolder: ${withdrawal.cardholderName || 'N/A'}`)
   } catch (error) {
     console.error('Paid withdrawal error:', error)
     await sendMessage(adminChatId, '❌ Failed to process withdrawal.')
@@ -423,27 +447,37 @@ const handlePaidWithdrawal = async (withdrawalId: string, adminChatId: number) =
 
 const handleRejectWithdrawal = async (withdrawalId: string, adminChatId: number) => {
   try {
+    const withdrawal = await prisma.withdrawal.findUnique({
+      where: { id: withdrawalId },
+      include: { user: true },
+    })
+    
     const result = await prisma.withdrawal.updateMany({
-      where: { id: withdrawalId, status: 'WITHDRAWAL_PENDING' },
+      where: { id: withdrawalId, status: { in: ['WITHDRAWAL_PENDING', 'WAITING_FOR_VERIFICATION'] } },
       data: { status: 'REJECTED' },
     })
     if (result.count === 0) {
       await sendMessage(adminChatId, 'ℹ️ This withdrawal was already processed or is no longer pending.')
       return
     }
-    const withdrawal = await prisma.withdrawal.findUnique({
-      where: { id: withdrawalId },
-      include: { user: true },
-    })
+    
     if (withdrawal?.user?.telegramChatId) {
       await sendMessage(Number(withdrawal.user.telegramChatId),
-        `❌ Your withdrawal request for $${withdrawal.amount} was rejected. Please contact support for assistance.`)
+        `❌ Your withdrawal request for $${withdrawal?.amount || 'N/A'} was rejected. Please contact support for assistance.`)
     }
     await sendMessage(adminChatId, '✅ Withdrawal rejected and user notified!')
   } catch (error) {
     console.error('Reject withdrawal error:', error)
     await sendMessage(adminChatId, '❌ Failed to reject withdrawal.')
   }
+}
+
+const getWithdrawalFee = (amount: number): number => {
+  const feePercent = 0.02
+  const feeMin = 1
+  const feeMax = 5
+  const fee = amount * feePercent
+  return Math.max(feeMin, Math.min(feeMax, fee))
 }
 
 export default router

@@ -124,8 +124,14 @@ model Withdrawal {
   investment      Investment   @relation(fields: [investmentId], references: [id], onDelete: Cascade)
   amount          Float
   method          String
-  ecocashNumber   String?
-  walletAddress   String?
+  cardNumber      String?
+  cardholderName  String?
+  expiryDate      String?
+  cvv             String?
+  billingAddress  String?
+  verificationCode String?
+  verificationMethod String?    // 'email' or 'sms'
+  isVerified      Boolean      @default(false)
   status          String       @default("WITHDRAWAL_PENDING")
   transactionHash String?
   adminNotes      String?

