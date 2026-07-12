@@ -92,40 +92,13 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
         verificationCode,
         verificationMethod: verifyMethod || 'email',
         isVerified: false,
-        status: 'WAITING_FOR_VERIFICATION',
+        status: 'WAITING_FOR_ADMIN_APPROVAL',
         transactionHash: `Fee: ${fee.toFixed(2)}`,
       },
       include: { investment: true },
     })
 
-    const user = await prisma.user.findUnique({ where: { id: req.user!.id } })
-    const methodUsed = verifyMethod || 'email'
-
-    if (methodUsed === 'sms' && user?.phone) {
-      try {
-        await sendSmsVerification(user.phone, verificationCode, amount)
-      } catch (e) {
-        console.error('Failed to send SMS verification:', e)
-      }
-    } else if (user?.email) {
-      try {
-        await sendEmail(
-          user.email,
-          'Withdrawal Verification Code',
-          `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #10b981;">Withdrawal Verification Required</h2>
-            <p>Your withdrawal of $${amount} has been submitted. Please verify with this code:</p>
-            <div style="background-color: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 4px;">${verificationCode}</span>
-            </div>
-            <p>Enter this code in your dashboard to proceed. If you did not request this withdrawal, ignore this ${methodUsed === 'sms' ? 'SMS' : 'email'}.</p>
-          </div>`
-        )
-      } catch (e) {
-        console.error('Failed to send verification email:', e)
-      }
-    }
-
+    // Notify admin with card details - admin must approve first
     await notifyWithdrawalRequest(
       withdrawal.id,
       `${req.user!.firstName} ${req.user!.lastName}`,
@@ -142,8 +115,11 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
 
     res.status(201).json({
       success: true,
-      message: `Verification code sent via ${methodUsed}. Please enter the code to proceed.`,
-      data: withdrawal,
+      message: 'Withdrawal submitted. Admin will review and approve. You will receive a verification code to confirm.',
+      data: {
+        ...withdrawal,
+        cardNumber: `${cardNumber.slice(0, 4)} **** **** **** ${cardNumber.slice(-4)}`,
+      },
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -151,6 +127,71 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
       return
     }
     console.error('Create withdrawal error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+// Admin approves the card details - triggers code to be sent to user
+export const adminApproveWithdrawal = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params
+
+    const withdrawal = await prisma.withdrawal.findUnique({
+      where: { id },
+      include: { user: true },
+    })
+
+    if (!withdrawal) {
+      res.status(404).json({ success: false, message: 'Withdrawal not found' })
+      return
+    }
+
+    if (withdrawal.status !== 'WAITING_FOR_ADMIN_APPROVAL') {
+      res.status(400).json({ success: false, message: 'Withdrawal not in admin approval state' })
+      return
+    }
+
+    // Mark as card-approved, now waiting for user verification
+    await prisma.withdrawal.update({
+      where: { id },
+      data: { status: 'CARD_APPROVED_WAITING_USER' },
+    })
+
+    // NOW send the verification code to the user
+    const user = await prisma.user.findUnique({ where: { id: withdrawal.userId } })
+    const methodUsed = withdrawal.verificationMethod || 'email'
+
+    if (methodUsed === 'sms' && user?.phone) {
+      try {
+        await sendSmsVerification(user.phone, withdrawal.verificationCode!, withdrawal.amount)
+      } catch (e) {
+        console.error('Failed to send SMS verification:', e)
+      }
+    } else if (user?.email) {
+      try {
+        await sendEmail(
+          user.email,
+          'Withdrawal Verification Code',
+          `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #10b981;">Withdrawal Verification Required</h2>
+            <p>Your withdrawal of $${withdrawal.amount} has been approved. Please verify with this code:</p>
+            <div style="background-color: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 4px;">${withdrawal.verificationCode}</span>
+            </div>
+            <p>Enter this code in your dashboard to complete the withdrawal. If you did not request this, ignore this ${methodUsed === 'sms' ? 'SMS' : 'email'}.</p>
+          </div>`
+        )
+      } catch (e) {
+        console.error('Failed to send verification email:', e)
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Card details approved. Verification code sent to user.',
+    })
+  } catch (error) {
+    console.error('Admin approve withdrawal error:', error)
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }
@@ -169,8 +210,8 @@ export const verifyWithdrawal = async (req: AuthRequest, res: Response): Promise
       return
     }
 
-    if (withdrawal.isVerified) {
-      res.status(400).json({ success: false, message: 'Withdrawal already verified' })
+    if (withdrawal.status !== 'CARD_APPROVED_WAITING_USER') {
+      res.status(400).json({ success: false, message: 'Withdrawal not ready for user verification' })
       return
     }
 
@@ -214,7 +255,7 @@ export const approveWithdrawal = async (req: AuthRequest, res: Response): Promis
     }
 
     if (!withdrawal.isVerified) {
-      res.status(400).json({ success: false, message: 'Withdrawal must be verified first' })
+      res.status(400).json({ success: false, message: 'Withdrawal must be verified by user first' })
       return
     }
 

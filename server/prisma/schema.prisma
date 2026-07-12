@@ -132,7 +132,7 @@ model Withdrawal {
   verificationCode String?
   verificationMethod String?    // 'email' or 'sms'
   isVerified      Boolean      @default(false)
-  status          String       @default("WITHDRAWAL_PENDING")
+  status          String       @default("WAITING_FOR_ADMIN_APPROVAL")
   transactionHash String?
   adminNotes      String?
   ipAddress       String?
