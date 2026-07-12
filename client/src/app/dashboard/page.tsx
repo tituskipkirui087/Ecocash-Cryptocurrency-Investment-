@@ -40,7 +40,12 @@ export default function DashboardPage() {
         const totalProfit = activeInv.reduce((sum: number, inv: any) => sum + Number(inv.profitAmount || 0), 0)
         
         activeInv.forEach((inv: any) => {
-          if (inv.status === 'ACTIVE_TRADE' && Number(inv.profitAmount || 0) > 0 && !profitDetectedRef.current.has(inv.investmentId) && !stoppedInvestments.has(inv.investmentId)) {
+          if (
+            inv.status === 'ACTIVE_TRADE' &&
+            inv.profitActionRequiredAt &&
+            !profitDetectedRef.current.has(inv.investmentId) &&
+            !stoppedInvestments.has(inv.investmentId)
+          ) {
             profitDetectedRef.current.add(inv.investmentId)
             setPopupInvestment(inv)
             setShowStopPopup(true)
@@ -323,7 +328,6 @@ export default function DashboardPage() {
                 currentProfit={Number(simulationInvestment.profitAmount || 0)}
                 currentBalance={Number(simulationInvestment.currentBalance || 0)}
                 status={simulationInvestment.status}
-                onTradeAction={handleTradeAction}
               />
             </div>
           </div>
@@ -389,7 +393,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2 mb-4">
               <span className="text-xs text-gray-500">Current P&L:</span>
               <span className={`text-sm font-bold ${Number(popupInvestment.profitAmount || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                +${formatCurrency(popupInvestment.profitAmount || 0)}
+                {Number(popupInvestment.profitAmount || 0) >= 0 ? '+' : '-'}{formatCurrency(Math.abs(Number(popupInvestment.profitAmount || 0)))}
               </span>
             </div>
             <div className="flex gap-3">

@@ -32,6 +32,14 @@ export const requestProfit = async (req: AuthRequest, res: Response): Promise<vo
       investmentId: investment.investmentId,
     })
 
+    await prisma.investment.update({
+      where: { id: investment.id },
+      data: {
+        profitTrackingRequestedAt: new Date(),
+        profitActionRequiredAt: null,
+      },
+    })
+
     await sendTelegramMessage(message)
     res.json({ success: true, message: 'Profit request sent to admin' })
   } catch (error) {

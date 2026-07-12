@@ -1,10 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { TrendingUp, TrendingDown, MoreHorizontal, AlertCircle, CheckCircle, X } from 'lucide-react'
+import { TrendingUp, TrendingDown, MoreHorizontal, CheckCircle } from 'lucide-react'
 import TradingViewWidget from '@/components/TradingViewWidget'
-import { api } from '@/lib/api'
-import toast from 'react-hot-toast'
 
 interface SimulatedTrade {
   id: string
@@ -27,15 +25,13 @@ interface ActiveTradeSimulatorProps {
   currentProfit: number
   status: string
   onClose?: () => void
-  onTradeAction?: (action: 'stop' | 'continue') => void
 }
 
-export default function ActiveTradeSimulator({ investmentId, depositAmount, currentProfit, currentBalance, status, onClose, onTradeAction }: ActiveTradeSimulatorProps & { currentBalance?: number, onTradeAction?: (action: 'stop' | 'continue') => void }) {
+export default function ActiveTradeSimulator({ investmentId, depositAmount, currentProfit, currentBalance, status, onClose }: ActiveTradeSimulatorProps & { currentBalance?: number }) {
   const [currentPrice, setCurrentPrice] = useState(107234.52)
   const [trades, setTrades] = useState<SimulatedTrade[]>([])
   const [orderBook, setOrderBook] = useState<{ bids: OrderBookLevel[]; asks: OrderBookLevel[] }>({ bids: [], asks: [] })
   const [elapsed, setElapsed] = useState(0)
-  const [showStopPopup, setShowStopPopup] = useState(false)
   const tradeIdRef = useRef(0)
   const entryPriceRef = useRef<number | null>(null)
   const [analysis, setAnalysis] = useState<{ entryPrice: number; entryTime: string; signal: string; reason: string } | null>(null)
@@ -116,34 +112,6 @@ export default function ActiveTradeSimulator({ investmentId, depositAmount, curr
   const runningBalance = currentBalance ?? (depositAmount + (currentProfit || totalSimulatedProfit))
   const totalProfit = currentProfit || totalSimulatedProfit
   const profitFromEntry = entryPriceRef.current ? ((currentPrice - entryPriceRef.current) / entryPriceRef.current) * 100 : 0
-  const profitDetectedRef = useRef(false)
-
-  // Show popup when profit is detected (first time it becomes positive) - only if not controlled by parent
-  useEffect(() => {
-    if (!onTradeAction && totalProfit > 0 && !profitDetectedRef.current) {
-      profitDetectedRef.current = true
-      setShowStopPopup(true)
-    }
-  }, [totalProfit, onTradeAction])
-
-  const handleTradeAction = async (action: 'stop' | 'continue') => {
-    try {
-      if (onTradeAction) {
-        onTradeAction(action)
-      } else {
-        await api.post(`investments/${investmentId}/user-action`, { action })
-        if (action === 'stop') {
-          toast.success('Trade stop requested - admin notified')
-        } else {
-          toast.success('Trade will continue - admin notified')
-        }
-      }
-    } catch (err: any) {
-      toast.error('Failed to send action: ' + (err.response?.data?.message || err.message))
-    }
-    setShowStopPopup(false)
-  }
-
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600)
     const m = Math.floor((seconds % 3600) / 60)
@@ -318,46 +286,6 @@ export default function ActiveTradeSimulator({ investmentId, depositAmount, curr
           </div>
         </div>
       </div>
-
-      {/* Stop Trade Popup */}
-      {showStopPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-[#181A20] border border-[#2B2F36] rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-[#F0B90B]" />
-                <h3 className="text-lg font-semibold text-[#EAECEF]">Trade Action Required</h3>
-              </div>
-              <button onClick={() => setShowStopPopup(false)} className="text-[#848E9C] hover:text-[#EAECEF]">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <p className="text-sm text-[#B7BDC6] mb-4">
-              Your investment #{investmentId} has generated profit. Would you like to stop the trade or continue?
-            </p>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-xs text-[#848E9C]">Current P&L:</span>
-              <span className={`text-sm font-bold font-mono ${totalProfit >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
-                {totalProfit >= 0 ? '+' : ''}${formatNumber(totalProfit, 2)}
-              </span>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => handleTradeAction('stop')}
-                className="flex-1 rounded-lg bg-[#F6465D] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#F6465D]/90 transition-colors"
-              >
-                Stop Trade
-              </button>
-              <button
-                onClick={() => handleTradeAction('continue')}
-                className="flex-1 rounded-lg bg-[#0ECB81] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0ECB81]/90 transition-colors"
-              >
-                Continue
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

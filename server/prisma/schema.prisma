@@ -58,6 +58,8 @@ model Investment {
   currentBalance     Float
   profitPercentage   Float    @default(0)
   profitAmount       Float    @default(0)
+  profitTrackingRequestedAt DateTime?
+  profitActionRequiredAt    DateTime?
   tradeStartDate     DateTime?
   tradeEndDate       DateTime?
   status             String   @default("PENDING")

@@ -95,6 +95,8 @@ router.post('/webhook', async (req, res) => {
                     currentBalance: newBalance,
                     profitAmount: profitAmount,
                     profitPercentage: calculatedPercentage,
+                    // Only a reply to a requested profit update enables this prompt.
+                    profitActionRequiredAt: new Date(),
                   },
                   include: { user: true },
                 })

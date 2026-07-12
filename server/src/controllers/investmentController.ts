@@ -230,6 +230,11 @@ export const notifyUserTradeAction = async (req: AuthRequest, res: Response): Pr
         return
       }
 
+    await prisma.investment.update({
+      where: { id: investment.id },
+      data: { profitActionRequiredAt: null },
+    })
+
     const { sendTelegramMessage } = await import('../services/telegramService.js')
     const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID
     if (ADMIN_CHAT_ID) {
