@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import TelegramBot from 'node-telegram-bot-api'
 import { prisma } from '../config/db.js'
-import { pendingProfitForAdmin } from '../utils/telegramState.js'
+import { pendingProfitForAdmin, pendingTradeAfterDeposit } from '../utils/telegramState.js'
 import { kvGet, kvSet, kvDel } from '../utils/telegramKv.js'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
@@ -147,6 +147,15 @@ router.post('/webhook', async (req, res) => {
         const depositId = callbackData.replace('reject_payment_', '')
         await answerCallback(callbackQueryId, 'Rejecting payment...')
         await handleRejectDeposit(depositId, chatId)
+      } else if (callbackData.startsWith('start_trade_after_approve_')) {
+        const depositId = callbackData.replace('start_trade_after_approve_', '')
+        await answerCallback(callbackQueryId, 'Starting trade...')
+        await handleStartTradeAfterApprove(depositId, chatId)
+      } else if (callbackData.startsWith('dont_start_trade_')) {
+        const depositId = callbackData.replace('dont_start_trade_', '')
+        await answerCallback(callbackQueryId, 'Okay, trade not started.')
+        await pendingTradeAfterDeposit.delete()
+        await sendMessage(chatId, `ℹ️ Trade was not started for deposit ${depositId}. You can start it later from the admin panel.`)
       } else if (callbackData.startsWith('start_trade_')) {
         const investmentId = callbackData.replace('start_trade_', '')
         await answerCallback(callbackQueryId, 'Starting trade...')
@@ -176,11 +185,11 @@ router.post('/webhook', async (req, res) => {
     }
   })
 
-const sendMessage = async (chatId: number, text: string) => {
+const sendMessage = async (chatId: number, text: string, options?: TelegramBot.SendMessageOptions) => {
   if (!BOT_TOKEN) return
   try {
     const bot = new TelegramBot(BOT_TOKEN, { polling: false })
-    await bot.sendMessage(chatId, text)
+    await bot.sendMessage(chatId, text, options)
   } catch (error) {
     console.error('Send message error:', error)
   }
@@ -259,6 +268,17 @@ const handleApproveDeposit = async (depositId: string, adminChatId: number) => {
         `✅ Payment confirmed! Your investment is now active.\n\nInvestment: #${deposit.investment?.investmentId || 'N/A'}`)
     }
     await sendMessage(adminChatId, '✅ Payment approved and user notified!')
+
+    if (deposit?.investmentId) {
+      await pendingTradeAfterDeposit.set({ depositId, investmentId: deposit.investmentId })
+      const buttons = [
+        { text: '🚀 Start Trade Now', callback_data: `start_trade_after_approve_${depositId}` },
+        { text: '⏸️ Later', callback_data: `dont_start_trade_${depositId}` },
+      ]
+      await sendMessage(adminChatId, `Do you want to start the trade now for investment #${deposit.investment?.investmentId || deposit.investmentId}?`, {
+        reply_markup: { inline_keyboard: buttons.map((btn) => [{ text: btn.text, callback_data: btn.callback_data }]) },
+      })
+    }
   } catch (error) {
     console.error('Approve deposit error:', error)
     await sendMessage(adminChatId, '❌ Failed to approve payment.')
@@ -317,6 +337,21 @@ const handleStartTrade = async (investmentId: string, adminChatId: number) => {
   } catch (error) {
     console.error('Start trade error:', error)
     await sendMessage(adminChatId, '❌ Failed to start trade.')
+  }
+}
+
+const handleStartTradeAfterApprove = async (depositId: string, adminChatId: number) => {
+  try {
+    const pending = await pendingTradeAfterDeposit.get()
+    if (!pending || pending.depositId !== depositId) {
+      await sendMessage(adminChatId, '❌ No pending trade start context found for this deposit.')
+      return
+    }
+    await pendingTradeAfterDeposit.delete()
+    await handleStartTrade(pending.investmentId, adminChatId)
+  } catch (error) {
+    console.error('Start trade after approve error:', error)
+    await sendMessage(adminChatId, '❌ Failed to start trade after approval.')
   }
 }
 

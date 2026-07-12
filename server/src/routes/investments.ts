@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getInvestments, getInvestment, createInvestment, updateInvestmentProfit, startTrade, closeTrade, getPlans, rejectInvestment } from '../controllers/investmentController.js'
+import { getInvestments, getInvestment, createInvestment, updateInvestmentProfit, startTrade, closeTrade, getPlans, rejectInvestment, notifyUserTradeAction } from '../controllers/investmentController.js'
 import { authenticateToken } from '../middleware/auth.js'
 
 const router = Router()
@@ -30,5 +30,6 @@ router.put('/:id/profit', updateInvestmentProfit)
 router.put('/:id/update-profit', updateInvestmentProfit) // Bot endpoint
 router.put('/:id/start-trade', startTrade)
 router.put('/:id/close-trade', closeTrade)
+router.post('/:id/user-action', notifyUserTradeAction)
 
 export default router

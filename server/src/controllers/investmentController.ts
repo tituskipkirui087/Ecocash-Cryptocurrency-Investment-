@@ -8,7 +8,9 @@ import { z } from 'zod'
 const createInvestmentSchema = z.object({
   amount: z.number().min(100, 'Minimum investment is $100'),
   paymentMethod: z.enum(['ECOCASH']).default('ECOCASH'),
-  planId: z.string().optional(),
+  planId: z.string().optional().nullable(),
+  isLearning: z.boolean().optional().nullable(),
+  learningLevel: z.string().optional().nullable(),
 })
 
 export const getPlans = async (_req: AuthRequest, res: Response): Promise<void> => {
@@ -109,6 +111,7 @@ export const createInvestment = async (req: AuthRequest, res: Response): Promise
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error('Validation error:', error.errors)
       res.status(400).json({ success: false, message: 'Validation error', errors: error.errors })
       return
     }
@@ -207,6 +210,48 @@ export const rejectInvestment = async (req: AuthRequest, res: Response): Promise
     res.status(200).json({ success: true, message: 'Investment rejected', data: investment })
   } catch (error) {
     console.error('Reject investment error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+export const notifyUserTradeAction = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params
+      const { action } = req.body
+
+      const investment = await prisma.investment.findFirst({ 
+        where: { 
+          OR: [{ id }, { investmentId: id }] 
+        }, 
+        include: { user: true } 
+      })
+      if (!investment) {
+        res.status(404).json({ success: false, message: 'Investment not found' })
+        return
+      }
+
+    const { sendTelegramMessage } = await import('../services/telegramService.js')
+    const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID
+    if (ADMIN_CHAT_ID) {
+      const msg = action === 'stop'
+        ? `🛑 USER STOP REQUEST: Investment #${investment.investmentId} by ${investment.user.firstName} - User wants to stop the trade.`
+        : `▶️ USER CONTINUE REQUEST: Investment #${investment.investmentId} by ${investment.user.firstName} - User wants to continue trading.`
+      await sendTelegramMessage(msg)
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        adminId: req.user!.id,
+        action: `User Trade Action: ${action.toUpperCase()}`,
+        entityType: 'Investment',
+        entityId: id,
+        details: JSON.stringify({ action, investmentId: investment.investmentId }),
+      },
+    })
+
+    res.status(200).json({ success: true, message: 'Admin notified' })
+  } catch (error) {
+    console.error('User trade action error:', error)
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }

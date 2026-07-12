@@ -19,6 +19,54 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
   const authHeader = req.headers.authorization
   const token = authHeader && authHeader.split(' ')[1]
 
+  // In development mode, try fallback if no token or invalid token
+  if (process.env.NODE_ENV !== 'production') {
+    if (!token) {
+      const demoUser = await prisma.user.findFirst({
+        where: { email: 'investor@example.com' },
+        select: { id: true, email: true, role: true, firstName: true, lastName: true },
+      })
+      if (demoUser) {
+        req.user = demoUser
+        return next()
+      }
+      res.status(401).json({ success: false, message: 'Access token required' })
+      return
+    }
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { id: true, email: true, role: true, isActive: true, isVerified: true, firstName: true, lastName: true },
+      })
+      if (!user) {
+        const demoUser = await prisma.user.findFirst({
+          where: { email: 'investor@example.com' },
+          select: { id: true, email: true, role: true, firstName: true, lastName: true },
+        })
+        if (demoUser) {
+          req.user = demoUser
+          return next()
+        }
+        res.status(401).json({ success: false, message: 'User not found' })
+        return
+      }
+      req.user = user
+      next()
+      return
+    } catch (e) {
+      // Token invalid, try demo user
+      const demoUser = await prisma.user.findFirst({
+        where: { email: 'investor@example.com' },
+        select: { id: true, email: true, role: true, firstName: true, lastName: true },
+      })
+      if (demoUser) {
+        req.user = demoUser
+        return next()
+      }
+    }
+  }
+
   if (!token) {
     res.status(401).json({ success: false, message: 'Access token required' })
     return
