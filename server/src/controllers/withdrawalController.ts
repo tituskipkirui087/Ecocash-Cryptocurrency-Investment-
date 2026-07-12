@@ -63,6 +63,7 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
 
     const withdrawal = await prisma.withdrawal.create({
       data: {
+        withdrawalId,
         userId: req.user!.id,
         investmentId,
         amount,
@@ -75,7 +76,9 @@ export const createWithdrawal = async (req: AuthRequest, res: Response): Promise
       include: { investment: true },
     })
 
-    await notifyWithdrawalRequest(withdrawalId, `${req.user!.firstName} ${req.user!.lastName}`, Number(amount), method)
+    // Telegram callback data must use the database primary key consumed by the
+    // webhook handler, not the human-readable withdrawal reference.
+    await notifyWithdrawalRequest(withdrawal.id, `${req.user!.firstName} ${req.user!.lastName}`, Number(amount), method)
 
     res.status(201).json({
       success: true,

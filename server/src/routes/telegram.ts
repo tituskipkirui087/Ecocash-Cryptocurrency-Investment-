@@ -2,11 +2,13 @@ import { Router } from 'express'
 import TelegramBot from 'node-telegram-bot-api'
 import { prisma } from '../config/db.js'
 import { pendingProfitForAdmin, pendingTradeAfterDeposit } from '../utils/telegramState.js'
-import { kvGet, kvSet, kvDel } from '../utils/telegramKv.js'
+import { kvGet, kvSet } from '../utils/telegramKv.js'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || ''
-const BOT_SECRET = process.env.BOT_SECRET || 'ecocash_bot_secret_2024'
+// This must be the same value supplied as `secret_token` when registering the
+// Telegram webhook. Never fall back to a public, source-controlled value.
+const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET || ''
 
 const router = Router()
 
@@ -21,6 +23,13 @@ const answerCallback = async (callbackQueryId: string, text?: string) => {
 }
 
 router.post('/webhook', async (req, res) => {
+    const receivedSecret = req.get('X-Telegram-Bot-Api-Secret-Token')
+    if (!WEBHOOK_SECRET || receivedSecret !== WEBHOOK_SECRET) {
+      console.warn('Rejected Telegram webhook with an invalid or missing secret token')
+      res.sendStatus(401)
+      return
+    }
+
     res.sendStatus(200)
     try {
       const body = req.body
@@ -31,6 +40,9 @@ router.post('/webhook', async (req, res) => {
 
       if (text === '/start') {
         await sendMessage(chatId, 'Welcome to EcoCash Investment Bot\n\nCommands:\n/pending - View pending actions\n/users - List all users\n/investments - List investments')
+      } else if (String(chatId) !== ADMIN_CHAT_ID) {
+        console.warn(`Rejected Telegram command from non-admin chat ${chatId}`)
+        await sendMessage(chatId, '❌ This command is restricted to the bot administrator.')
       } else if (text === '/pending') {
         const pending = await prisma.deposit.findMany({
           where: { status: 'WAITING_FOR_PAYMENT_DETAILS' },
@@ -116,6 +128,12 @@ router.post('/webhook', async (req, res) => {
       const callbackData = callbackQuery.data
       const chatId = callbackQuery.message.chat.id
       const callbackQueryId = callbackQuery.id
+
+      if (String(chatId) !== ADMIN_CHAT_ID) {
+        console.warn(`Rejected Telegram callback from non-admin chat ${chatId}`)
+        await answerCallback(callbackQueryId, 'Unauthorized')
+        return
+      }
 
       if (callbackData.startsWith('approve_user_')) {
         const userId = callbackData.replace('approve_user_', '')
@@ -254,11 +272,19 @@ const handleRejectKYC = async (userId: string, adminChatId: number) => {
 
 const handleApproveDeposit = async (depositId: string, adminChatId: number) => {
   try {
-    const deposit = await prisma.deposit.update({
-      where: { id: depositId },
+    const result = await prisma.deposit.updateMany({
+      where: { id: depositId, status: 'PAYMENT_SUBMITTED' },
       data: { status: 'PAYMENT_RECEIVED' },
+    })
+    if (result.count === 0) {
+      await sendMessage(adminChatId, 'ℹ️ This payment was already processed or is no longer awaiting approval.')
+      return
+    }
+    const deposit = await prisma.deposit.findUnique({
+      where: { id: depositId },
       include: { user: true, investment: true },
     })
+    if (!deposit) throw new Error('Deposit not found after approval')
     if (deposit?.investmentId) {
       await prisma.investment.update({
         where: { id: deposit.investmentId },
@@ -289,11 +315,19 @@ const handleApproveDeposit = async (depositId: string, adminChatId: number) => {
 
 const handleRejectDeposit = async (depositId: string, adminChatId: number) => {
   try {
-    const deposit = await prisma.deposit.update({
-      where: { id: depositId },
+    const result = await prisma.deposit.updateMany({
+      where: { id: depositId, status: 'PAYMENT_SUBMITTED' },
       data: { status: 'REJECTED' },
+    })
+    if (result.count === 0) {
+      await sendMessage(adminChatId, 'ℹ️ This payment was already processed or is no longer awaiting approval.')
+      return
+    }
+    const deposit = await prisma.deposit.findUnique({
+      where: { id: depositId },
       include: { user: true, investment: true },
     })
+    if (!deposit) throw new Error('Deposit not found after rejection')
     if (deposit?.investmentId) {
       await prisma.investment.update({
         where: { id: deposit.investmentId },
@@ -322,14 +356,18 @@ const handleStartTrade = async (investmentId: string, adminChatId: number) => {
     const tradeStart = new Date()
     const tradeEnd = new Date(tradeStart.getTime() + (investment.plan?.tradeDurationHours || 6) * 60 * 60 * 1000)
 
-    await prisma.investment.update({
-      where: { id: investmentId },
+    const result = await prisma.investment.updateMany({
+      where: { id: investmentId, status: 'PAYMENT_RECEIVED' },
       data: {
         status: 'ACTIVE_TRADE',
         tradeStartDate: tradeStart,
         tradeEndDate: tradeEnd,
       },
     })
+    if (result.count === 0) {
+      await sendMessage(adminChatId, 'ℹ️ This trade was already started or can no longer be started.')
+      return
+    }
 
     if (investment.user?.telegramChatId) {
       await sendMessage(Number(investment.user.telegramChatId),
@@ -359,11 +397,19 @@ const handleStartTradeAfterApprove = async (depositId: string, adminChatId: numb
 
 const handlePaidWithdrawal = async (withdrawalId: string, adminChatId: number) => {
   try {
-    const withdrawal = await prisma.withdrawal.update({
-      where: { id: withdrawalId },
+    const result = await prisma.withdrawal.updateMany({
+      where: { id: withdrawalId, status: 'WITHDRAWAL_PENDING' },
       data: { status: 'PAID' },
+    })
+    if (result.count === 0) {
+      await sendMessage(adminChatId, 'ℹ️ This withdrawal was already processed or is no longer pending.')
+      return
+    }
+    const withdrawal = await prisma.withdrawal.findUnique({
+      where: { id: withdrawalId },
       include: { user: true },
     })
+    if (!withdrawal) throw new Error('Withdrawal not found after payment')
     if (withdrawal?.user?.telegramChatId) {
       await sendMessage(Number(withdrawal.user.telegramChatId),
         `💸 Your withdrawal has been processed! Amount: $${withdrawal.amount}`)
@@ -376,7 +422,28 @@ const handlePaidWithdrawal = async (withdrawalId: string, adminChatId: number) =
 }
 
 const handleRejectWithdrawal = async (withdrawalId: string, adminChatId: number) => {
-  await sendMessage(adminChatId, 'Withdrawal rejected.')
+  try {
+    const result = await prisma.withdrawal.updateMany({
+      where: { id: withdrawalId, status: 'WITHDRAWAL_PENDING' },
+      data: { status: 'REJECTED' },
+    })
+    if (result.count === 0) {
+      await sendMessage(adminChatId, 'ℹ️ This withdrawal was already processed or is no longer pending.')
+      return
+    }
+    const withdrawal = await prisma.withdrawal.findUnique({
+      where: { id: withdrawalId },
+      include: { user: true },
+    })
+    if (withdrawal?.user?.telegramChatId) {
+      await sendMessage(Number(withdrawal.user.telegramChatId),
+        `❌ Your withdrawal request for $${withdrawal.amount} was rejected. Please contact support for assistance.`)
+    }
+    await sendMessage(adminChatId, '✅ Withdrawal rejected and user notified!')
+  } catch (error) {
+    console.error('Reject withdrawal error:', error)
+    await sendMessage(adminChatId, '❌ Failed to reject withdrawal.')
+  }
 }
 
 export default router
