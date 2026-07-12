@@ -107,6 +107,9 @@ export default function AdminWithdrawalsPage() {
                         </button>
                       </>
                     )}
+                    {w.status === 'AWAITING_OTP' && (
+                      <span className="text-xs text-amber-600">Awaiting user OTP</span>
+                    )}
                     {w.status === 'WITHDRAWAL_PENDING' && w.isVerified && (
                       <>
                         <button onClick={() => approveWithdrawal(w.id)} className="flex items-center gap-1 rounded bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100">
