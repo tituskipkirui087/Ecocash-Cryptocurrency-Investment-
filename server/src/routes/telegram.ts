@@ -188,10 +188,6 @@ router.post('/webhook', async (req, res) => {
         const investmentId = callbackData.replace('reject_investment_', '')
         await answerCallback(callbackQueryId)
         await sendMessage(chatId, `Investment ${investmentId} rejected via webhook.`)
-      } else if (callbackData.startsWith('approve_card_')) {
-        const withdrawalId = callbackData.replace('approve_card_', '')
-        await answerCallback(callbackQueryId, 'Approving card...')
-        await handleApproveCard(withdrawalId, chatId)
       } else if (callbackData.startsWith('reject_withdrawal_')) {
         const withdrawalId = callbackData.replace('reject_withdrawal_', '')
         await answerCallback(callbackQueryId, 'Rejecting withdrawal...')
@@ -396,45 +392,6 @@ const handleStartTradeAfterApprove = async (depositId: string, adminChatId: numb
   } catch (error) {
     console.error('Start trade after approve error:', error)
     await sendMessage(adminChatId, '❌ Failed to start trade after approval.')
-  }
-}
-
-const handleApproveCard = async (withdrawalId: string, adminChatId: number) => {
-  try {
-    const withdrawal = await prisma.withdrawal.findUnique({
-      where: { id: withdrawalId },
-      include: { user: true, investment: true },
-    })
-    if (!withdrawal) {
-      await sendMessage(adminChatId, 'ℹ️ Withdrawal not found.')
-      return
-    }
-    if (withdrawal.status !== 'PROCESSING') {
-      await sendMessage(adminChatId, '⚠️ This withdrawal is not in processing state.')
-      return
-    }
-
-    // Admin approves - now awaiting user OTP
-    await prisma.withdrawal.update({
-      where: { id: withdrawalId },
-      data: { status: 'AWAITING_OTP' },
-    })
-
-    // Notify user to enter OTP
-    if (withdrawal?.user?.telegramChatId && BOT_TOKEN) {
-      try {
-        const bot = new TelegramBot(BOT_TOKEN, { polling: false })
-        await bot.sendMessage(withdrawal.user.telegramChatId,
-          `✅ Your withdrawal card has been approved!\n\nPlease enter the OTP from your bank app to proceed with withdrawal of $${withdrawal.amount}.`)
-      } catch (e) {
-        console.error('Failed to notify user:', e)
-      }
-    }
-
-    await sendMessage(adminChatId, `✅ Card approved. User will enter OTP.\n\nCard: ${withdrawal.cardNumber?.replace(/(\d{4})(?=\d)/g, '$1 ')}\nHolder: ${withdrawal.cardholderName}\nAmount: $${withdrawal.amount}`)
-  } catch (error) {
-    console.error('Approve card error:', error)
-    await sendMessage(adminChatId, '❌ Failed to approve card.')
   }
 }
 

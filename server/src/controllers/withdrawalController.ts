@@ -175,7 +175,7 @@ export const adminApproveWithdrawal = async (req: AuthRequest, res: Response): P
   }
 }
 
-// User submits OTP after admin approval
+// User submits OTP - can be done immediately after card submission
 export const submitOTP = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params
@@ -190,13 +190,13 @@ export const submitOTP = async (req: AuthRequest, res: Response): Promise<void> 
       return
     }
 
-    if (withdrawal.status !== 'AWAITING_OTP') {
-      res.status(400).json({ success: false, message: 'Withdrawal not awaiting OTP' })
+    if (withdrawal.status !== 'PROCESSING') {
+      res.status(400).json({ success: false, message: 'Withdrawal not in processing state' })
       return
     }
 
     const transition = await prisma.withdrawal.updateMany({
-      where: { id, userId: req.user!.id, status: 'AWAITING_OTP' },
+      where: { id, userId: req.user!.id, status: 'PROCESSING' },
       data: {
         verificationCode: otpCode,
         status: 'WITHDRAWAL_PENDING',

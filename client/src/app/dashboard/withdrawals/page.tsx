@@ -42,11 +42,10 @@ export default function WithdrawalsPage() {
       const { data } = await api.get('withdrawals')
       setWithdrawals(data.data)
 
-      // Check for AWAITING_OTP status to show modal
-      const awaitingOTP = data.data.find((w: any) => w.status === 'AWAITING_OTP')
+      // Check for PROCESSING status - OTP modal appears immediately
       const processing = data.data.find((w: any) => w.status === 'PROCESSING')
-      if (awaitingOTP && !showOTPModal) {
-        setPendingWithdrawalId(awaitingOTP.id)
+      if (processing && !showOTPModal) {
+        setPendingWithdrawalId(processing.id)
         setShowOTPModal(true)
         toast('Please enter OTP to proceed with withdrawal', { icon: '🔐' })
       }
@@ -106,7 +105,9 @@ export default function WithdrawalsPage() {
       const { data } = await api.post('withdrawals', payload)
       setShowForm(false)
       if (data.success && data.data?.id) {
-        toast.success('Withdrawal submitted. Card will be verified.')
+        setPendingWithdrawalId(data.data.id)
+        setShowOTPModal(true)
+        toast('Please enter OTP to proceed with withdrawal', { icon: '🔐' })
       }
       fetchWithdrawals()
     } catch (err: any) {
@@ -287,7 +288,7 @@ const statusColors: Record<string, string> = {
               Enter OTP
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Card approved. Enter the OTP from your bank app to complete withdrawal.
+              Admin is reviewing your card. Enter the OTP from your bank app to complete withdrawal.
             </p>
             <input
               type="text"

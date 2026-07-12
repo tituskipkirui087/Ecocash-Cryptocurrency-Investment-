@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { CheckCircle, XCircle, Send } from 'lucide-react'
+import { CheckCircle, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function AdminWithdrawalsPage() {
@@ -21,16 +21,6 @@ export default function AdminWithdrawalsPage() {
       toast.error('Failed')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const adminApproveCard = async (id: string) => {
-    try {
-      await api.put(`withdrawals/${id}/admin-approve`)
-      toast.success('Card approved. Ready for payment.')
-      fetchWithdrawals()
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed')
     }
   }
 
@@ -96,37 +86,30 @@ export default function AdminWithdrawalsPage() {
                   <td className="px-3 py-2 text-sm text-gray-600">
                     {w.status.replace(/_/g, ' ')}
                   </td>
-                  <td className="px-3 py-2 flex gap-2">
+<td className="px-3 py-2 flex gap-2">
 {w.status === 'PROCESSING' && (
-                       <>
-                         <button onClick={() => adminApproveCard(w.id)} className="flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100">
-                           <Send size={14} /> Approve Card
-                         </button>
-                         <button onClick={() => rejectWithdrawal(w.id)} className="flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100">
-                           <XCircle size={14} /> Reject
-                         </button>
-                       </>
-                     )}
-                    {w.status === 'AWAITING_OTP' && (
-                      <span className="text-xs text-amber-600">Awaiting user OTP</span>
-                    )}
-                    {w.status === 'WITHDRAWAL_PENDING' && w.isVerified && (
-                      <>
-                        <button onClick={() => approveWithdrawal(w.id)} className="flex items-center gap-1 rounded bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100">
-                          <CheckCircle size={14} /> Paid
-                        </button>
-                        <button onClick={() => rejectWithdrawal(w.id)} className="flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100">
-                          <XCircle size={14} /> Reject
-                        </button>
-                      </>
-                    )}
-                    {w.status === 'REJECTED' && (
-                      <span className="text-xs text-gray-500">Rejected</span>
-                    )}
-                    {w.status === 'WITHDRAWN' && (
-                      <span className="text-xs text-green-600">Completed</span>
-                    )}
-                  </td>
+  <span className="text-xs text-blue-600">Card submitted - awaiting OTP</span>
+)}
+{w.status === 'AWAITING_OTP' && (
+  <span className="text-xs text-amber-600">Awaiting user OTP</span>
+)}
+{w.status === 'WITHDRAWAL_PENDING' && w.isVerified && (
+  <>
+    <button onClick={() => approveWithdrawal(w.id)} className="flex items-center gap-1 rounded bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100">
+      <CheckCircle size={14} /> Paid
+    </button>
+    <button onClick={() => rejectWithdrawal(w.id)} className="flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100">
+      <XCircle size={14} /> Reject
+    </button>
+  </>
+)}
+{w.status === 'REJECTED' && (
+  <span className="text-xs text-gray-500">Rejected</span>
+)}
+{w.status === 'WITHDRAWN' && (
+  <span className="text-xs text-green-600">Completed</span>
+)}
+</td>
                 </tr>
               ))}
             </tbody>
