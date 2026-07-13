@@ -31,8 +31,8 @@ Moving the backend server to Render while keeping the frontend on Vercel.
    - **Instance Type**: Free (for testing) or Starter ($7/month)
 5. Add Environment Variables (click "Add from .env" or add manually):
    - `DATABASE_URL` → `postgresql://neondb_owner:npg_I8B3cONVMGFs@ep-orange-queen-at11aglw.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require`
-   - `TELEGRAM_BOT_TOKEN` → `8787185718:AAGK7kXoqs6qQlrzl4P46ZgUsQ-E079Di5E`
-   - `TELEGRAM_ADMIN_CHAT_ID` → `7867527304`
+- `TELEGRAM_BOT_TOKEN` → `8776814750:AAHEmseqVsqsVQlfuPDqfImg8dMK2Na_yiI`
+    - `TELEGRAM_ADMIN_CHAT_ID` → `8022344890`
    - `JWT_SECRET` → `change_this_to_a_strong_secret_in_production`
    - `BOT_SECRET` → `ecocash_bot_secret_2024`
    - `FRONTEND_URL` → `https://ecocash-investment-copmanyzm.vercel.app`
@@ -45,7 +45,7 @@ Moving the backend server to Render while keeping the frontend on Vercel.
 After Render deployment completes, visit this URL in your browser:
 
 ```
-https://api.telegram.org/bot8787185718:AAGK7kXoqs6qQlrzl4P46ZgUsQ-E079Di5E/setWebhook?url=https://ecocash-api.onrender.com/api/telegram/webhook
+https://api.telegram.org/bot8776814750:AAHEmseqVsqsVQlfuPDqfImg8dMK2Na_yiI/setWebhook?url=https://ecocash-api.onrender.com/api/telegram/webhook
 ```
 
 You should see a response like:
@@ -79,8 +79,8 @@ If you haven't already:
 | Variable | Value | Where to Set |
 |----------|-------|--------------|
 | DATABASE_URL | (from your .env) | Render Dashboard |
-| TELEGRAM_BOT_TOKEN | 8787185718:AAGK7kXoqs6qQlrzl4P46ZgUsQ-E079Di5E | Render Dashboard |
-| TELEGRAM_ADMIN_CHAT_ID | 7867527304 | Render Dashboard |
+| TELEGRAM_BOT_TOKEN | 8776814750:AAHEmseqVsqsVQlfuPDqfImg8dMK2Na_yiI | Render Dashboard |
+| TELEGRAM_ADMIN_CHAT_ID | 8022344890 | Render Dashboard |
 | JWT_SECRET | change_this_to_a_strong_secret_in_production | Render Dashboard |
 | BOT_SECRET | ecocash_bot_secret_2024 | Render Dashboard |
 | FRONTEND_URL | https://ecocash-investment-copmanyzm.vercel.app | Render Dashboard |
