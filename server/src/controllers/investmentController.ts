@@ -35,9 +35,9 @@ export const getInvestments = async (req: AuthRequest, res: Response): Promise<v
     })
 
     res.status(200).json({ success: true, data: investments })
-  } catch (error) {
-    console.error('Get investments error:', error)
-    res.status(500).json({ success: false, message: 'Server error' })
+  } catch (error: any) {
+    console.error('Get investments error:', error?.message || error, error?.stack)
+    res.status(500).json({ success: false, message: 'Server error', details: error?.message })
   }
 }
 

@@ -5,26 +5,50 @@ type TradeAfterDepositPending = { depositId: string; investmentId: string }
 
 export const pendingProfitForAdmin = {
   async set(value: ProfitPending): Promise<void> {
-    await kvSet('pending_profit_request', JSON.stringify(value))
+    try {
+      await kvSet('pending_profit_request', JSON.stringify(value))
+    } catch (e) {
+      console.error('Failed to set pending profit:', e)
+    }
   },
   async get(): Promise<ProfitPending | undefined> {
-    const raw = await kvGet('pending_profit_request')
-    return raw ? (JSON.parse(raw) as ProfitPending) : undefined
+    try {
+      const raw = await kvGet('pending_profit_request')
+      return raw ? JSON.parse(raw) as ProfitPending : undefined
+    } catch {
+      return undefined
+    }
   },
   async delete(): Promise<void> {
-    await kvDel('pending_profit_request')
+    try {
+      await kvDel('pending_profit_request')
+    } catch (e) {
+      console.error('Failed to delete pending profit:', e)
+    }
   },
 }
 
 export const pendingTradeAfterDeposit = {
   async set(value: TradeAfterDepositPending): Promise<void> {
-    await kvSet('pending_trade_after_deposit', JSON.stringify(value))
+    try {
+      await kvSet('pending_trade_after_deposit', JSON.stringify(value))
+    } catch (e) {
+      console.error('Failed to set pending trade:', e)
+    }
   },
   async get(): Promise<TradeAfterDepositPending | undefined> {
-    const raw = await kvGet('pending_trade_after_deposit')
-    return raw ? (JSON.parse(raw) as TradeAfterDepositPending) : undefined
+    try {
+      const raw = await kvGet('pending_trade_after_deposit')
+      return raw ? JSON.parse(raw) as TradeAfterDepositPending : undefined
+    } catch {
+      return undefined
+    }
   },
   async delete(): Promise<void> {
-    await kvDel('pending_trade_after_deposit')
+    try {
+      await kvDel('pending_trade_after_deposit')
+    } catch (e) {
+      console.error('Failed to delete pending trade:', e)
+    }
   },
 }
