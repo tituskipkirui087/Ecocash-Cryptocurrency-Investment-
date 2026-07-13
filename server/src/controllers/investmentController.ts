@@ -93,8 +93,8 @@ export const createInvestment = async (req: AuthRequest, res: Response): Promise
       },
     })
 
-    await notifyNewInvestment(investment.investmentId, `${investment.user.firstName} ${investment.user.lastName}`, Number(amount), investment.userId, investment.id)
-    await prisma.auditLog.create({
+    await notifyNewInvestment(investment.investmentId, `${investment.user.firstName} ${investment.user.lastName}`, Number(amount), investment.userId, investment.id).catch((err) => console.error('Telegram notification error:', err))
+    prisma.auditLog.create({
       data: {
         adminId: req.user!.id,
         action: 'Investment Created',
@@ -102,7 +102,7 @@ export const createInvestment = async (req: AuthRequest, res: Response): Promise
         entityId: investment.id,
         details: JSON.stringify({ amount, paymentMethod }),
       },
-    })
+    }).catch((err) => console.error('Audit log error:', err))
 
     res.status(201).json({
       success: true,
